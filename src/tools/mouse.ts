@@ -17,8 +17,14 @@ const CLICK_MODIFIERS = ["command", "shift", "option", "control"] as const;
 /** Default scroll amount in discrete steps. */
 const SCROLL_DEFAULT_AMOUNT = 3;
 
+/** Maximum scroll amount in discrete steps. */
+const SCROLL_MAX_AMOUNT = 100;
+
 /** Default drag duration in milliseconds. 600ms is the minimum for reliable macOS drag recognition. */
 const DRAG_DEFAULT_DURATION_MS = 600;
+
+/** Maximum drag duration in milliseconds (30 seconds). */
+const DRAG_MAX_DURATION_MS = 30_000;
 
 /** Shared hint appended to all interaction tool descriptions. */
 const SILENT_HINT =
@@ -58,6 +64,7 @@ const ScrollInputSchema = z.object({
     .number()
     .int()
     .positive()
+    .max(SCROLL_MAX_AMOUNT)
     .default(SCROLL_DEFAULT_AMOUNT)
     .describe(`Scroll amount in discrete steps (default: ${SCROLL_DEFAULT_AMOUNT})`),
 });
@@ -71,6 +78,7 @@ const DragInputSchema = z.object({
     .number()
     .int()
     .positive()
+    .max(DRAG_MAX_DURATION_MS)
     .default(DRAG_DEFAULT_DURATION_MS)
     .describe(`Drag duration in milliseconds (default: ${DRAG_DEFAULT_DURATION_MS})`),
 });

@@ -45,12 +45,16 @@ const KEY_NAME_EXAMPLES = [
 
 // -- Schemas -----------------------------------------------------------------
 
+/** Maximum delay between keystrokes in milliseconds (1 second). */
+const TYPE_DELAY_MAX_MS = 1_000;
+
 const TypeTextInputSchema = z.object({
   text: z.string().min(1).describe("Text to type. Supports full Unicode including CJK and emoji."),
   delay_ms: z
     .number()
     .int()
     .min(0)
+    .max(TYPE_DELAY_MAX_MS)
     .optional()
     .describe("Delay between keystrokes in milliseconds (default 0)."),
 });
