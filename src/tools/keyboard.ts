@@ -3,12 +3,12 @@ import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { zodToToolInputSchema } from "../helpers/schema.js";
 import { runInputHelper } from "../helpers/input-helper.js";
 import { enqueue } from "../queue.js";
-import { KEY_CODES, MODIFIER_FLAGS } from "../constants.js";
+import { KEY_CODES } from "../constants.js";
 
 // -- Constants ---------------------------------------------------------------
 
-/** Modifier name aliases mapped to canonical MODIFIER_FLAGS keys. */
-const MODIFIER_ALIASES: Record<string, keyof typeof MODIFIER_FLAGS> = {
+/** Modifier name aliases mapped to canonical names. */
+const MODIFIER_ALIASES: Record<string, string> = {
   cmd: "command",
   command: "command",
   ctrl: "control",
@@ -159,8 +159,8 @@ async function handlePressKey(
     };
   }
 
-  // Build combined modifier flags
-  let modifiers = 0;
+  // Build modifier name array for the Swift helper
+  const modifiers: string[] = [];
   for (const mod of modifierNames) {
     const canonical = MODIFIER_ALIASES[mod.toLowerCase()];
     if (canonical === undefined) {
@@ -174,7 +174,7 @@ async function handlePressKey(
         ],
       };
     }
-    modifiers |= MODIFIER_FLAGS[canonical];
+    modifiers.push(canonical);
   }
 
   await runInputHelper("key", { code, modifiers });
