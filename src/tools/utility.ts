@@ -1,11 +1,8 @@
-import { execFile } from "node:child_process";
 import { stat, unlink } from "node:fs/promises";
-import { promisify } from "node:util";
 import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { zodToToolInputSchema } from "../helpers/schema.js";
-
-const execFileAsync = promisify(execFile);
+import { execFileAsync } from "../helpers/exec.js";
 
 // -- Constants ---------------------------------------------------------------
 

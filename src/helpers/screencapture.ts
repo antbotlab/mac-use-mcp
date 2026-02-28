@@ -1,11 +1,8 @@
-import { execFile } from "node:child_process";
 import { readFile, unlink } from "node:fs/promises";
-import { promisify } from "node:util";
 import { randomBytes } from "node:crypto";
 import { escapeAppleScriptString } from "./applescript.js";
 import { DEFAULT_MAX_DIMENSION } from "../constants.js";
-
-const execFileAsync = promisify(execFile);
+import { execFileAsync } from "./exec.js";
 
 /** Timeout for screencapture and image-processing commands (ms). */
 const COMMAND_TIMEOUT_MS = 10_000;

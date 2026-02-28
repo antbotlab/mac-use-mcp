@@ -1,10 +1,7 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { access } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { ERROR_MESSAGES } from "../constants.js";
-
-const execFileAsync = promisify(execFile);
+import { execFileAsync } from "./exec.js";
 
 /** Timeout for Swift helper binary execution (ms). */
 const COMMAND_TIMEOUT_MS = 5_000;

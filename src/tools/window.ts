@@ -1,12 +1,9 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { zodToToolInputSchema } from "../helpers/schema.js";
+import { execFileAsync } from "../helpers/exec.js";
 import { runAppleScript, escapeAppleScriptString } from "../helpers/applescript.js";
 import { enqueue } from "../queue.js";
-
-const execFileAsync = promisify(execFile);
 
 // -- Constants ---------------------------------------------------------------
 
