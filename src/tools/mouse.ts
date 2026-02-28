@@ -157,8 +157,8 @@ export const mouseToolDefinitions: Tool[] = [
       "Drag from one screen coordinate to another over a specified duration.",
       "",
       "Best practices for window dragging:",
-      "- Always call focus_window on the target app BEFORE dragging to ensure the window is frontmost. Without this, the drag may land on a different overlapping window and silently fail.",
-      "- Start coordinates must land on the window's title bar (the empty area to the right of the traffic-light buttons), not on buttons or the content area.",
+      "- Always call focus_window on the target app immediately BEFORE dragging to ensure the window is frontmost. Without this, the drag may land on a different overlapping window and silently fail.",
+      "- Start coordinates must land on the window's title bar — use the far-right edge of the title bar to avoid traffic-light buttons and any center toolbar icons.",
       "- Use a duration of 600–1000 ms. Too short and macOS may not recognize it as a drag gesture.",
     ].join("\n"),
     inputSchema: {
