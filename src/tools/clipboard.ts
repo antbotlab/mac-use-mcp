@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { zodToToolInputSchema } from "../helpers/schema.js";
 import { clipboardRead, clipboardWrite } from "../helpers/clipboard.js";
+import { enqueue } from "../queue.js";
 
 // -- Schemas -----------------------------------------------------------------
 
@@ -73,11 +74,11 @@ async function handleClipboardWrite(
 
 // -- Dispatcher --------------------------------------------------------------
 
-/** Map of clipboard tool names to their handler functions. */
+/** Map of clipboard tool names to their handler functions (queued). */
 export const clipboardToolHandlers: Record<
   string,
   (args: Record<string, unknown>) => Promise<CallToolResult>
 > = {
-  clipboard_read: () => handleClipboardRead(),
-  clipboard_write: handleClipboardWrite,
+  clipboard_read: () => enqueue(() => handleClipboardRead()),
+  clipboard_write: (args) => enqueue(() => handleClipboardWrite(args)),
 };
