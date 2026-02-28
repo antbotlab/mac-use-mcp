@@ -376,6 +376,44 @@ func handleSecure() {
     outputJSON(["success": true, "secure": isSecure])
 }
 
+// MARK: - Display Info Handler
+
+/// Handle the "display_info" command.
+///
+/// Queries all active displays via CGDisplayBounds (logical points — same
+/// coordinate system as CGEvent) and the display scale factor.
+///
+/// Args: {} (none required)
+/// Returns: {"success":true, "displays":[{name, width, height, x, y, scaleFactor}]}
+func handleDisplayInfo() {
+    var displayIDs = [CGDirectDisplayID](repeating: 0, count: 32)
+    var displayCount: UInt32 = 0
+    CGGetActiveDisplayList(32, &displayIDs, &displayCount)
+
+    var displays: [[String: Any]] = []
+    for i in 0..<Int(displayCount) {
+        let id = displayIDs[i]
+        let bounds = CGDisplayBounds(id)
+
+        var scaleFactor = 1
+        if let mode = CGDisplayCopyDisplayMode(id) {
+            let pw = mode.pixelWidth
+            scaleFactor = Int(round(Double(pw) / Double(bounds.size.width)))
+        }
+
+        displays.append([
+            "name": CGDisplayIsBuiltin(id) != 0 ? "Built-in Display" : "External Display",
+            "width": Int(bounds.size.width),
+            "height": Int(bounds.size.height),
+            "x": Int(bounds.origin.x),
+            "y": Int(bounds.origin.y),
+            "scaleFactor": scaleFactor,
+        ])
+    }
+
+    outputJSON(["success": true, "displays": displays])
+}
+
 // MARK: - Main Entry Point
 
 let arguments = CommandLine.arguments
@@ -412,6 +450,8 @@ case "drag":
     handleDrag(args)
 case "secure":
     handleSecure()
+case "display_info":
+    handleDisplayInfo()
 default:
     fail("unknown command: \(command)")
 }
