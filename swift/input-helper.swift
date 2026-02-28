@@ -248,15 +248,130 @@ func handleKey(_ args: [String: Any]) {
     outputJSON(["success": true])
 }
 
-// MARK: - Placeholder Handlers
+// MARK: - Scroll Command Handler
 
-/// Commands that are not yet implemented.
-private let placeholderCommands: Set<String> = [
-    "scroll", "drag", "secure",
-]
+/// Handle the "scroll" command.
+///
+/// Moves the cursor to the target position, then dispatches a scroll wheel event.
+///
+/// Args: {"x":Int, "y":Int, "dx":Int, "dy":Int}
+///   - x, y:   Screen coordinates to scroll at.
+///   - dx, dy: Horizontal and vertical scroll deltas in pixels.
+func handleScroll(_ args: [String: Any]) {
+    let x = requireCGFloat(args, key: "x", command: "scroll")
+    let y = requireCGFloat(args, key: "y", command: "scroll")
+    let dx = args["dx"] as? Int ?? 0
+    let dy = args["dy"] as? Int ?? 0
+    let point = CGPoint(x: x, y: y)
 
-func handlePlaceholder(_ command: String) {
-    fail("\(command): not implemented")
+    // Move cursor to the target position first
+    guard let moveEvent = CGEvent(
+        mouseEventSource: nil,
+        mouseType: .mouseMoved,
+        mouseCursorPosition: point,
+        mouseButton: .left
+    ) else {
+        fail("scroll: failed to create mouse move event")
+    }
+    moveEvent.post(tap: .cghidEventTap)
+
+    // Create and post scroll wheel event
+    guard let scrollEvent = CGEvent(
+        scrollWheelEvent2Source: nil,
+        units: .pixel,
+        wheelCount: 2,
+        wheel1: Int32(dy),
+        wheel2: Int32(dx)
+    ) else {
+        fail("scroll: failed to create scroll wheel event")
+    }
+    scrollEvent.post(tap: .cghidEventTap)
+
+    outputJSON(["success": true])
+}
+
+// MARK: - Drag Command Handler
+
+/// Minimum number of intermediate steps for a smooth drag path.
+private let minDragSteps = 10
+
+/// Handle the "drag" command.
+///
+/// Performs a left-button drag from (sx, sy) to (ex, ey) over the given duration.
+///
+/// Args: {"sx":Int, "sy":Int, "ex":Int, "ey":Int, "duration":500}
+///   - sx, sy:    Start coordinates.
+///   - ex, ey:    End coordinates.
+///   - duration:  Total drag time in milliseconds (default 500).
+func handleDrag(_ args: [String: Any]) {
+    let sx = requireCGFloat(args, key: "sx", command: "drag")
+    let sy = requireCGFloat(args, key: "sy", command: "drag")
+    let ex = requireCGFloat(args, key: "ex", command: "drag")
+    let ey = requireCGFloat(args, key: "ey", command: "drag")
+    let duration = args["duration"] as? Int ?? 500
+
+    let startPoint = CGPoint(x: sx, y: sy)
+    let endPoint = CGPoint(x: ex, y: ey)
+
+    // Press the left mouse button at the start position
+    guard let downEvent = CGEvent(
+        mouseEventSource: nil,
+        mouseType: .leftMouseDown,
+        mouseCursorPosition: startPoint,
+        mouseButton: .left
+    ) else {
+        fail("drag: failed to create mouse down event")
+    }
+    downEvent.post(tap: .cghidEventTap)
+
+    // Interpolate intermediate points along the drag path
+    let steps = max(minDragSteps, Int(max(abs(ex - sx), abs(ey - sy)) / 10))
+    let sleepPerStep = UInt32(duration * 1000 / steps)
+
+    for i in 1...steps {
+        let t = CGFloat(i) / CGFloat(steps)
+        let ix = sx + (ex - sx) * t
+        let iy = sy + (ey - sy) * t
+        let intermediatePoint = CGPoint(x: ix, y: iy)
+
+        guard let dragEvent = CGEvent(
+            mouseEventSource: nil,
+            mouseType: .leftMouseDragged,
+            mouseCursorPosition: intermediatePoint,
+            mouseButton: .left
+        ) else {
+            fail("drag: failed to create mouse drag event at step \(i)")
+        }
+        dragEvent.post(tap: .cghidEventTap)
+
+        usleep(sleepPerStep)
+    }
+
+    // Release the left mouse button at the end position
+    guard let upEvent = CGEvent(
+        mouseEventSource: nil,
+        mouseType: .leftMouseUp,
+        mouseCursorPosition: endPoint,
+        mouseButton: .left
+    ) else {
+        fail("drag: failed to create mouse up event")
+    }
+    upEvent.post(tap: .cghidEventTap)
+
+    outputJSON(["success": true])
+}
+
+// MARK: - Secure Input Status Handler
+
+/// Handle the "secure" command.
+///
+/// Checks whether secure event input is currently enabled (e.g., password fields).
+///
+/// Args: {} (none required)
+/// Returns: {"success":true, "secure":true|false}
+func handleSecure() {
+    let isSecure = IsSecureEventInputEnabled()
+    outputJSON(["success": true, "secure": isSecure])
 }
 
 // MARK: - Main Entry Point
@@ -289,8 +404,12 @@ case "type":
     handleType(args)
 case "key":
     handleKey(args)
-case _ where placeholderCommands.contains(command):
-    handlePlaceholder(command)
+case "scroll":
+    handleScroll(args)
+case "drag":
+    handleDrag(args)
+case "secure":
+    handleSecure()
 default:
     fail("unknown command: \(command)")
 }
