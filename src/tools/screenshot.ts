@@ -1,0 +1,221 @@
+import { z } from "zod";
+import { captureScreen } from "../helpers/screencapture.js";
+import { enqueue } from "../queue.js";
+import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
+// -- Constants ---------------------------------------------------------------
+
+/** Default maximum dimension for resizing screenshots. */
+const DEFAULT_MAX_DIMENSION = 1024;
+
+/** Minimum allowed value for max_dimension. */
+const MIN_MAX_DIMENSION = 256;
+
+/** Maximum allowed value for max_dimension. */
+const MAX_MAX_DIMENSION = 4096;
+
+/** Permission setup instructions shown when screenshot capture fails. */
+const PERMISSION_INSTRUCTIONS =
+  "Screen Recording permission is required. " +
+  "Grant it in: System Settings > Privacy & Security > Screen Recording — add this application. " +
+  "You may need to restart the application after granting permission.";
+
+// -- Schemas -----------------------------------------------------------------
+
+const ScreenshotInputSchema = z
+  .object({
+    mode: z
+      .enum(["full", "region", "window"])
+      .default("full")
+      .describe('Capture mode: "full" (entire screen), "region" (rectangular area), or "window" (specific window)'),
+    x: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("Left edge x-coordinate in screen pixels (required when mode is region)"),
+    y: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("Top edge y-coordinate in screen pixels (required when mode is region)"),
+    width: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe("Region width in screen pixels (required when mode is region)"),
+    height: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe("Region height in screen pixels (required when mode is region)"),
+    window_title: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("Window title to capture (required when mode is window)"),
+    max_dimension: z
+      .number()
+      .int()
+      .min(MIN_MAX_DIMENSION)
+      .max(MAX_MAX_DIMENSION)
+      .default(DEFAULT_MAX_DIMENSION)
+      .describe(`Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}, default ${DEFAULT_MAX_DIMENSION})`),
+    format: z
+      .enum(["png", "jpeg"])
+      .default("png")
+      .describe('Output image format: "png" (default) or "jpeg"'),
+  })
+  .refine(
+    (data) => {
+      if (data.mode === "region") {
+        return (
+          data.x !== undefined &&
+          data.y !== undefined &&
+          data.width !== undefined &&
+          data.height !== undefined
+        );
+      }
+      return true;
+    },
+    { message: "x, y, width, and height are required when mode is \"region\"" },
+  )
+  .refine(
+    (data) => {
+      if (data.mode === "window") {
+        return data.window_title !== undefined;
+      }
+      return true;
+    },
+    { message: "window_title is required when mode is \"window\"" },
+  );
+
+// -- Tool definitions --------------------------------------------------------
+
+export const screenshotToolDefinitions: Tool[] = [
+  {
+    name: "screenshot",
+    description:
+      "Capture a screenshot of the macOS screen. Supports full screen, a rectangular region, or a specific window by title. Returns a base64-encoded image with dimension metadata.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        mode: {
+          type: "string",
+          enum: ["full", "region", "window"],
+          description: 'Capture mode: "full" (entire screen), "region" (rectangular area), or "window" (specific window)',
+          default: "full",
+        },
+        x: {
+          type: "number",
+          description: "Left edge x-coordinate in screen pixels (required when mode is region)",
+        },
+        y: {
+          type: "number",
+          description: "Top edge y-coordinate in screen pixels (required when mode is region)",
+        },
+        width: {
+          type: "number",
+          description: "Region width in screen pixels (required when mode is region)",
+        },
+        height: {
+          type: "number",
+          description: "Region height in screen pixels (required when mode is region)",
+        },
+        window_title: {
+          type: "string",
+          description: "Window title to capture (required when mode is window)",
+        },
+        max_dimension: {
+          type: "number",
+          description: `Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}, default ${DEFAULT_MAX_DIMENSION})`,
+          default: DEFAULT_MAX_DIMENSION,
+        },
+        format: {
+          type: "string",
+          enum: ["png", "jpeg"],
+          description: 'Output image format: "png" (default) or "jpeg"',
+          default: "png",
+        },
+      },
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
+  },
+];
+
+// -- Handlers ----------------------------------------------------------------
+
+/** Handle screenshot tool call. */
+async function handleScreenshot(
+  args: Record<string, unknown>,
+): Promise<CallToolResult> {
+  const parsed = ScreenshotInputSchema.parse(args);
+
+  try {
+    const result = await captureScreen({
+      mode: parsed.mode,
+      region:
+        parsed.mode === "region"
+          ? { x: parsed.x!, y: parsed.y!, w: parsed.width!, h: parsed.height! }
+          : undefined,
+      windowTitle: parsed.mode === "window" ? parsed.window_title : undefined,
+      maxDimension: parsed.max_dimension,
+      format: parsed.format,
+    });
+
+    const mimeType = parsed.format === "jpeg" ? "image/jpeg" : "image/png";
+
+    return {
+      content: [
+        {
+          type: "image" as const,
+          data: result.base64,
+          mimeType,
+        },
+        {
+          type: "text" as const,
+          text: [
+            `Image dimensions: ${result.width}x${result.height} (logical pixels)`,
+            `Scale: ${result.scaleInfo}`,
+            "Note: coordinates in this image map to screen coordinates at the same scale ratio. " +
+              "To convert image pixel positions to screen coordinates, multiply by (original_dimension / image_dimension).",
+          ].join("\n"),
+        },
+      ],
+    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    // Detect permission-related failures and include setup instructions
+    const isPermissionError =
+      /permission/i.test(message) ||
+      /not permitted/i.test(message) ||
+      /screen recording/i.test(message) ||
+      /cannot be opened/i.test(message);
+
+    const text = isPermissionError
+      ? `Screenshot failed: ${message}\n\n${PERMISSION_INSTRUCTIONS}`
+      : `Screenshot failed: ${message}`;
+
+    return {
+      content: [{ type: "text" as const, text }],
+      isError: true,
+    };
+  }
+}
+
+// -- Dispatcher --------------------------------------------------------------
+
+/** Map of screenshot tool names to their handler functions (queued). */
+export const screenshotToolHandlers: Record<
+  string,
+  (args: Record<string, unknown>) => Promise<CallToolResult>
+> = {
+  screenshot: (args) => enqueue(() => handleScreenshot(args)),
+};
