@@ -8,8 +8,11 @@ const execFileAsync = promisify(execFile);
 /** Timeout for screencapture and image-processing commands (ms). */
 const COMMAND_TIMEOUT_MS = 10_000;
 
-/** Default maximum dimension for resizing screenshots. */
-const DEFAULT_MAX_DIMENSION = 1024;
+/**
+ * Sentinel value indicating that maxDimension should match the screen's
+ * logical resolution so image coordinates map 1:1 to screen coordinates.
+ */
+const AUTO_MAX_DIMENSION = 0;
 
 /** Prefix for temporary screenshot files. */
 const TMPFILE_PREFIX = "/tmp/mac-use-mcp-";
@@ -36,7 +39,7 @@ export interface CaptureOptions {
   region?: CaptureRegion;
   /** Window title to capture. Required when mode is "window". */
   windowTitle?: string;
-  /** Maximum dimension (width or height) for resizing. Defaults to 1024. */
+  /** Maximum dimension (width or height) for resizing. Defaults to logical screen resolution (0 = auto). */
   maxDimension?: number;
   /** Output image format. Defaults to "png". */
   format?: ImageFormat;
@@ -153,7 +156,7 @@ export async function captureScreen(
     mode = "full",
     region,
     windowTitle,
-    maxDimension = DEFAULT_MAX_DIMENSION,
+    maxDimension: maxDimensionOpt = AUTO_MAX_DIMENSION,
     format = "png",
     displayScaleFactor = 1,
   } = options;
@@ -205,8 +208,13 @@ export async function captureScreen(
     const logicalWidth = Math.round(originalDims.width / displayScaleFactor);
     const logicalHeight = Math.round(originalDims.height / displayScaleFactor);
 
-    // Resize to fit within maxDimension
-    await execFileAsync("sips", ["-Z", String(maxDimension), tmpPath], {
+    // Resize: auto (0) → match logical resolution; explicit → use user value
+    const resizeTarget =
+      maxDimensionOpt === AUTO_MAX_DIMENSION
+        ? Math.max(logicalWidth, logicalHeight)
+        : maxDimensionOpt;
+
+    await execFileAsync("sips", ["-Z", String(resizeTarget), tmpPath], {
       timeout: COMMAND_TIMEOUT_MS,
     });
 
