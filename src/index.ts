@@ -6,13 +6,38 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  type CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
+
+import {
+  utilityToolDefinitions,
+  utilityToolHandlers,
+} from "./tools/utility.js";
+import {
+  screenToolDefinitions,
+  screenToolHandlers,
+} from "./tools/screen.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
 /** MCP server name exposed to clients during initialization. */
 const SERVER_NAME = "mac-use-mcp";
+
+/** All registered tool definitions. */
+const allToolDefinitions = [
+  ...utilityToolDefinitions,
+  ...screenToolDefinitions,
+];
+
+/** Unified handler map — tool name to async handler function. */
+const allToolHandlers: Record<
+  string,
+  (args: Record<string, unknown>) => Promise<CallToolResult>
+> = {
+  ...utilityToolHandlers,
+  ...screenToolHandlers,
+};
 
 const server = new Server(
   { name: SERVER_NAME, version },
@@ -21,27 +46,46 @@ const server = new Server(
 
 /**
  * List available tools.
- *
- * Returns an empty array for now — tools are registered in later phases.
  */
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [],
+  tools: allToolDefinitions,
 }));
 
 /**
  * Handle tool invocations.
  *
- * Placeholder that rejects all calls until tools are registered.
+ * Dispatches to the matching handler or returns an error for unknown tools.
  */
-server.setRequestHandler(CallToolRequestSchema, async (request) => ({
-  content: [
-    {
-      type: "text" as const,
-      text: `Unknown tool: ${request.params.name}`,
-    },
-  ],
-  isError: true,
-}));
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  const handler = allToolHandlers[name];
+
+  if (!handler) {
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Unknown tool: ${name}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  try {
+    return await handler((args ?? {}) as Record<string, unknown>);
+  } catch (error: unknown) {
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+});
 
 /**
  * Start the MCP server on stdio transport.
