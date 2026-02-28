@@ -17,8 +17,8 @@ const CLICK_MODIFIERS = ["command", "shift", "option", "control"] as const;
 /** Default scroll amount in discrete steps. */
 const SCROLL_DEFAULT_AMOUNT = 3;
 
-/** Default drag duration in milliseconds. */
-const DRAG_DEFAULT_DURATION_MS = 500;
+/** Default drag duration in milliseconds. 600ms is the minimum for reliable macOS drag recognition. */
+const DRAG_DEFAULT_DURATION_MS = 600;
 
 // -- Schemas -----------------------------------------------------------------
 
@@ -153,8 +153,14 @@ export const mouseToolDefinitions: Tool[] = [
   },
   {
     name: "drag",
-    description:
+    description: [
       "Drag from one screen coordinate to another over a specified duration.",
+      "",
+      "Best practices for window dragging:",
+      "- Always call focus_window on the target app immediately BEFORE dragging to ensure the window is frontmost. Without this, the drag may land on a different overlapping window and silently fail.",
+      "- Start coordinates must land on the window's title bar — use the far-right edge of the title bar to avoid traffic-light buttons and any center toolbar icons.",
+      "- Use a duration of 600–1000 ms. Too short and macOS may not recognize it as a drag gesture.",
+    ].join("\n"),
     inputSchema: {
       type: "object" as const,
       properties: {
