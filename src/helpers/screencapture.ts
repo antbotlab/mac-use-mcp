@@ -99,7 +99,9 @@ async function getImageDimensions(
   const heightMatch = stdout.match(/pixelHeight:\s*(\d+)/);
 
   if (!widthMatch || !heightMatch) {
-    throw new Error(`Failed to parse image dimensions from sips output: ${stdout}`);
+    throw new Error(
+      `Failed to parse image dimensions from sips output: ${stdout}`,
+    );
   }
 
   return {
@@ -155,7 +157,9 @@ export async function captureScreen(
     switch (mode) {
       case "region": {
         if (!region) {
-          throw new Error('Region coordinates are required when mode is "region"');
+          throw new Error(
+            'Region coordinates are required when mode is "region"',
+          );
         }
         args.push("-R", `${region.x},${region.y},${region.w},${region.h}`);
         break;

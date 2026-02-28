@@ -14,26 +14,17 @@ import {
   utilityToolDefinitions,
   utilityToolHandlers,
 } from "./tools/utility.js";
-import {
-  screenToolDefinitions,
-  screenToolHandlers,
-} from "./tools/screen.js";
+import { screenToolDefinitions, screenToolHandlers } from "./tools/screen.js";
 import {
   screenshotToolDefinitions,
   screenshotToolHandlers,
 } from "./tools/screenshot.js";
-import {
-  mouseToolDefinitions,
-  mouseToolHandlers,
-} from "./tools/mouse.js";
+import { mouseToolDefinitions, mouseToolHandlers } from "./tools/mouse.js";
 import {
   keyboardToolDefinitions,
   keyboardToolHandlers,
 } from "./tools/keyboard.js";
-import {
-  windowToolDefinitions,
-  windowToolHandlers,
-} from "./tools/window.js";
+import { windowToolDefinitions, windowToolHandlers } from "./tools/window.js";
 import {
   clipboardToolDefinitions,
   clipboardToolHandlers,

@@ -89,11 +89,9 @@ async function testAccessibility(): Promise<boolean> {
  */
 async function testScreenRecording(): Promise<boolean> {
   try {
-    await execFileAsync(
-      "screencapture",
-      ["-x", SCREEN_RECORDING_TEST_PATH],
-      { timeout: PERMISSION_CHECK_TIMEOUT_MS },
-    );
+    await execFileAsync("screencapture", ["-x", SCREEN_RECORDING_TEST_PATH], {
+      timeout: PERMISSION_CHECK_TIMEOUT_MS,
+    });
 
     const info = await stat(SCREEN_RECORDING_TEST_PATH);
     const granted = info.size > 0;

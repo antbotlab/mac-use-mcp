@@ -17,9 +17,11 @@ const MAX_MAX_DIMENSION = 4096;
 // -- Response schemas (validate Swift helper output) -------------------------
 
 const DisplayScaleResponseSchema = z.object({
-  displays: z.array(z.object({
-    scaleFactor: z.number(),
-  })),
+  displays: z.array(
+    z.object({
+      scaleFactor: z.number(),
+    }),
+  ),
 });
 
 /** Permission setup instructions shown when screenshot capture fails. */
@@ -35,19 +37,25 @@ const ScreenshotBaseSchema = z.object({
   mode: z
     .enum(["full", "region", "window"])
     .default("full")
-    .describe('Capture mode: "full" (entire screen), "region" (rectangular area), or "window" (specific window)'),
+    .describe(
+      'Capture mode: "full" (entire screen), "region" (rectangular area), or "window" (specific window)',
+    ),
   x: z
     .number()
     .int()
     .min(0)
     .optional()
-    .describe("Left edge x-coordinate in screen pixels (required when mode is region)"),
+    .describe(
+      "Left edge x-coordinate in screen pixels (required when mode is region)",
+    ),
   y: z
     .number()
     .int()
     .min(0)
     .optional()
-    .describe("Top edge y-coordinate in screen pixels (required when mode is region)"),
+    .describe(
+      "Top edge y-coordinate in screen pixels (required when mode is region)",
+    ),
   width: z
     .number()
     .int()
@@ -71,7 +79,9 @@ const ScreenshotBaseSchema = z.object({
     .min(MIN_MAX_DIMENSION)
     .max(MAX_MAX_DIMENSION)
     .default(DEFAULT_MAX_DIMENSION)
-    .describe(`Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}, default ${DEFAULT_MAX_DIMENSION})`),
+    .describe(
+      `Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}, default ${DEFAULT_MAX_DIMENSION})`,
+    ),
   format: z
     .enum(["png", "jpeg"])
     .default("png")
@@ -79,30 +89,28 @@ const ScreenshotBaseSchema = z.object({
 });
 
 /** Full runtime validation schema with cross-field refinements. */
-const ScreenshotInputSchema = ScreenshotBaseSchema
-  .refine(
-    (data) => {
-      if (data.mode === "region") {
-        return (
-          data.x !== undefined &&
-          data.y !== undefined &&
-          data.width !== undefined &&
-          data.height !== undefined
-        );
-      }
-      return true;
-    },
-    { message: "x, y, width, and height are required when mode is \"region\"" },
-  )
-  .refine(
-    (data) => {
-      if (data.mode === "window") {
-        return data.window_title !== undefined;
-      }
-      return true;
-    },
-    { message: "window_title is required when mode is \"window\"" },
-  );
+const ScreenshotInputSchema = ScreenshotBaseSchema.refine(
+  (data) => {
+    if (data.mode === "region") {
+      return (
+        data.x !== undefined &&
+        data.y !== undefined &&
+        data.width !== undefined &&
+        data.height !== undefined
+      );
+    }
+    return true;
+  },
+  { message: 'x, y, width, and height are required when mode is "region"' },
+).refine(
+  (data) => {
+    if (data.mode === "window") {
+      return data.window_title !== undefined;
+    }
+    return true;
+  },
+  { message: 'window_title is required when mode is "window"' },
+);
 
 // -- Tool definitions --------------------------------------------------------
 

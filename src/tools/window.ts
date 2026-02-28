@@ -2,7 +2,10 @@ import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { zodToToolInputSchema } from "../helpers/schema.js";
 import { execFileAsync } from "../helpers/exec.js";
-import { runAppleScript, escapeAppleScriptString } from "../helpers/applescript.js";
+import {
+  runAppleScript,
+  escapeAppleScriptString,
+} from "../helpers/applescript.js";
 import { runInputHelper } from "../helpers/input-helper.js";
 import { OPEN_COMMAND_TIMEOUT_MS } from "../constants.js";
 import { enqueue } from "../queue.js";
@@ -13,7 +16,9 @@ const ListWindowsInputSchema = z.object({
   app: z
     .string()
     .optional()
-    .describe("Application name to filter by. If omitted, list windows from all applications."),
+    .describe(
+      "Application name to filter by. If omitted, list windows from all applications.",
+    ),
 });
 
 const FocusWindowInputSchema = z.object({
@@ -21,28 +26,34 @@ const FocusWindowInputSchema = z.object({
   title: z
     .string()
     .optional()
-    .describe("Window title to raise. If omitted, the frontmost window of the application is activated."),
+    .describe(
+      "Window title to raise. If omitted, the frontmost window of the application is activated.",
+    ),
 });
 
 const OpenApplicationInputSchema = z.object({
   name: z
     .string()
-    .describe("Application name (e.g. \"Safari\") or bundle identifier (e.g. \"com.apple.Safari\")."),
+    .describe(
+      'Application name (e.g. "Safari") or bundle identifier (e.g. "com.apple.Safari").',
+    ),
 });
 
 /** Schema for validating the Swift helper list_windows response. */
 export const ListWindowsResponseSchema = z.object({
   success: z.boolean(),
-  windows: z.array(z.object({
-    app: z.string(),
-    title: z.string(),
-    id: z.number(),
-    x: z.number(),
-    y: z.number(),
-    width: z.number(),
-    height: z.number(),
-    minimized: z.boolean(),
-  })),
+  windows: z.array(
+    z.object({
+      app: z.string(),
+      title: z.string(),
+      id: z.number(),
+      x: z.number(),
+      y: z.number(),
+      width: z.number(),
+      height: z.number(),
+      minimized: z.boolean(),
+    }),
+  ),
 });
 
 // -- Types -------------------------------------------------------------------
@@ -82,8 +93,7 @@ export const windowToolDefinitions: Tool[] = [
   },
   {
     name: "open_application",
-    description:
-      "Launch an application by name or bundle identifier.",
+    description: "Launch an application by name or bundle identifier.",
     inputSchema: zodToToolInputSchema(OpenApplicationInputSchema),
     annotations: {
       readOnlyHint: false,
@@ -99,7 +109,8 @@ export const windowToolDefinitions: Tool[] = [
  * a letter and containing only alphanumerics, hyphens, or underscores
  * (e.g. "com.apple.Safari", "com.apple.driver.Apple_HDA").
  */
-const BUNDLE_ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z][a-zA-Z0-9_-]*){2,}$/;
+const BUNDLE_ID_PATTERN =
+  /^[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z][a-zA-Z0-9_-]*){2,}$/;
 
 /**
  * Detect whether a name looks like a bundle identifier (reverse-DNS format).
@@ -115,10 +126,13 @@ async function handleListWindows(
   args: Record<string, unknown>,
 ): Promise<CallToolResult> {
   const parsed = ListWindowsInputSchema.parse(args);
-  const response = await runInputHelper("list_windows", parsed.app ? { app: parsed.app } : {});
+  const response = await runInputHelper(
+    "list_windows",
+    parsed.app ? { app: parsed.app } : {},
+  );
   const result = ListWindowsResponseSchema.parse(response);
 
-  const windows: WindowInfo[] = result.windows.map(w => ({
+  const windows: WindowInfo[] = result.windows.map((w) => ({
     app: w.app,
     title: w.title,
     id: w.id,
