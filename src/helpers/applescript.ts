@@ -7,6 +7,18 @@ const execFileAsync = promisify(execFile);
 const COMMAND_TIMEOUT_MS = 15_000;
 
 /**
+ * Escape a string for safe interpolation inside AppleScript double-quoted literals.
+ *
+ * Escapes backslashes first, then double quotes (order matters).
+ *
+ * @param str - The raw string to escape.
+ * @returns The escaped string safe for use inside AppleScript `"..."`.
+ */
+export function escapeAppleScriptString(str: string): string {
+  return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+/**
  * Execute an AppleScript expression and return its result.
  *
  * Uses the native `osascript` command with the `-e` flag.

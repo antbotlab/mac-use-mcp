@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { runAppleScript } from "../helpers/applescript.js";
+import { runAppleScript, escapeAppleScriptString } from "../helpers/applescript.js";
 import { enqueue } from "../queue.js";
 
 const execFileAsync = promisify(execFile);
@@ -137,13 +137,14 @@ function buildListWindowsScript(app?: string): string {
   const rd = RECORD_DELIMITER;
 
   if (app) {
+    const safeApp = escapeAppleScriptString(app);
     return `
 tell application "System Events"
-  if not (exists process "${app}") then
+  if not (exists process "${safeApp}") then
     return "NOT_RUNNING"
   end if
   set output to ""
-  tell process "${app}"
+  tell process "${safeApp}"
     set winList to every window
     repeat with w in winList
       set wName to name of w
@@ -151,7 +152,7 @@ tell application "System Events"
       set wPos to position of w
       set wSize to size of w
       set wMin to value of attribute "AXMinimized" of w
-      set output to output & "${app}" & "${fd}" & wName & "${fd}" & wId & "${fd}" & (item 1 of wPos) & "${fd}" & (item 2 of wPos) & "${fd}" & (item 1 of wSize) & "${fd}" & (item 2 of wSize) & "${fd}" & wMin & "${rd}"
+      set output to output & "${safeApp}" & "${fd}" & wName & "${fd}" & wId & "${fd}" & (item 1 of wPos) & "${fd}" & (item 2 of wPos) & "${fd}" & (item 1 of wSize) & "${fd}" & (item 2 of wSize) & "${fd}" & wMin & "${rd}"
     end repeat
   end tell
   return output
@@ -260,21 +261,23 @@ async function handleFocusWindow(
   args: Record<string, unknown>,
 ): Promise<CallToolResult> {
   const parsed = FocusWindowInputSchema.parse(args);
+  const safeApp = escapeAppleScriptString(parsed.app);
 
   // Activate the application
-  let script = `tell application "${parsed.app}" to activate`;
+  let script = `tell application "${safeApp}" to activate`;
 
   // If a specific window title is requested, raise it via System Events
   if (parsed.title) {
+    const safeTitle = escapeAppleScriptString(parsed.title);
     script += `
 delay 0.3
 tell application "System Events"
-  tell process "${parsed.app}"
+  tell process "${safeApp}"
     set frontmost to true
     try
-      perform action "AXRaise" of (first window whose name is "${parsed.title}")
+      perform action "AXRaise" of (first window whose name is "${safeTitle}")
     on error
-      error "Window titled \\"${parsed.title}\\" not found in ${parsed.app}"
+      error "Window titled \\"${safeTitle}\\" not found in ${safeApp}"
     end try
   end tell
 end tell`;
