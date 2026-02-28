@@ -169,11 +169,90 @@ func handleCursor() {
     ])
 }
 
+// MARK: - Keyboard Command Handlers
+
+/// Maximum number of UTF-16 code units per chunk for keyboardSetUnicodeString.
+private let maxUTF16UnitsPerChunk = 20
+
+/// Handle the "type" command.
+///
+/// Produces text output by synthesizing keyboard events with Unicode strings.
+/// Supports full Unicode including CJK and emoji.
+///
+/// Args: {"text":"string", "delay":0}
+///   - text:  The string to type.
+///   - delay: Milliseconds to wait between characters (default 0).
+func handleType(_ args: [String: Any]) {
+    guard let text = args["text"] as? String, !text.isEmpty else {
+        fail("type: missing required 'text' string argument")
+    }
+
+    let delayMs = args["delay"] as? Int ?? 0
+
+    // Convert the full string to UTF-16 code units
+    let utf16Units = Array(text.utf16)
+
+    // Process in chunks of up to maxUTF16UnitsPerChunk code units
+    var offset = 0
+    while offset < utf16Units.count {
+        let remaining = utf16Units.count - offset
+        let chunkSize = min(remaining, maxUTF16UnitsPerChunk)
+        var chunk = Array(utf16Units[offset..<(offset + chunkSize)])
+
+        guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true),
+              let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else {
+            fail("type: failed to create CGEvent")
+        }
+
+        keyDown.keyboardSetUnicodeString(stringLength: chunkSize, unicodeString: &chunk)
+        keyUp.keyboardSetUnicodeString(stringLength: chunkSize, unicodeString: &chunk)
+
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
+
+        offset += chunkSize
+
+        if delayMs > 0 && offset < utf16Units.count {
+            usleep(UInt32(delayMs * 1000))
+        }
+    }
+
+    outputJSON(["success": true])
+}
+
+/// Handle the "key" command.
+///
+/// Synthesizes a single key press with optional modifier flags.
+///
+/// Args: {"code":Int, "modifiers":["cmd","shift","ctrl","opt"]}
+///   - code:      Virtual key code (e.g. 0 = 'a', 36 = Return).
+///   - modifiers: Optional array of modifier names.
+func handleKey(_ args: [String: Any]) {
+    guard let code = args["code"] as? Int else {
+        fail("key: missing required 'code' integer argument")
+    }
+
+    let modifiers = args["modifiers"] as? [String] ?? []
+
+    guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: UInt16(code), keyDown: true),
+          let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: UInt16(code), keyDown: false) else {
+        fail("key: failed to create CGEvent")
+    }
+
+    applyModifiers(keyDown, modifiers)
+    applyModifiers(keyUp, modifiers)
+
+    keyDown.post(tap: .cghidEventTap)
+    keyUp.post(tap: .cghidEventTap)
+
+    outputJSON(["success": true])
+}
+
 // MARK: - Placeholder Handlers
 
 /// Commands that are not yet implemented.
 private let placeholderCommands: Set<String> = [
-    "type", "key", "scroll", "drag", "secure",
+    "scroll", "drag", "secure",
 ]
 
 func handlePlaceholder(_ command: String) {
@@ -206,6 +285,10 @@ case "move":
     handleMove(args)
 case "cursor":
     handleCursor()
+case "type":
+    handleType(args)
+case "key":
+    handleKey(args)
 case _ where placeholderCommands.contains(command):
     handlePlaceholder(command)
 default:
