@@ -1,3 +1,4 @@
+import Carbon
 import CoreGraphics
 import Foundation
 
@@ -281,7 +282,8 @@ func handleScroll(_ args: [String: Any]) {
         units: .pixel,
         wheelCount: 2,
         wheel1: Int32(dy),
-        wheel2: Int32(dx)
+        wheel2: Int32(dx),
+        wheel3: 0
     ) else {
         fail("scroll: failed to create scroll wheel event")
     }
