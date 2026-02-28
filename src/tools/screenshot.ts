@@ -16,6 +16,14 @@ const MIN_MAX_DIMENSION = 256;
 /** Maximum allowed value for max_dimension. */
 const MAX_MAX_DIMENSION = 4096;
 
+// -- Response schemas (validate Swift helper output) -------------------------
+
+const DisplayScaleResponseSchema = z.object({
+  displays: z.array(z.object({
+    scaleFactor: z.number(),
+  })),
+});
+
 /** Permission setup instructions shown when screenshot capture fails. */
 const PERMISSION_INSTRUCTIONS =
   "Screen Recording permission is required. " +
@@ -124,7 +132,7 @@ async function handleScreenshot(
   try {
     // Get display scale factor for logical dimension computation
     const displayResponse = await runInputHelper("display_info", {});
-    const displays = displayResponse.displays as Array<{ scaleFactor: number }>;
+    const { displays } = DisplayScaleResponseSchema.parse(displayResponse);
     const scaleFactor = displays.length > 0 ? displays[0].scaleFactor : 1;
 
     const result = await captureScreen({
