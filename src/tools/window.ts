@@ -177,10 +177,16 @@ function parseWindowRecords(raw: string): WindowInfo[] {
 }
 
 /**
- * Detect whether a name looks like a bundle identifier (contains dots).
+ * Reverse-DNS pattern: at least 3 dot-separated segments, each starting with
+ * a letter and containing only alphanumerics or hyphens (e.g. "com.apple.Safari").
+ */
+const BUNDLE_ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9-]*(\.[a-zA-Z][a-zA-Z0-9-]*){2,}$/;
+
+/**
+ * Detect whether a name looks like a bundle identifier (reverse-DNS format).
  */
 function isBundleId(name: string): boolean {
-  return name.includes(".");
+  return BUNDLE_ID_PATTERN.test(name);
 }
 
 // -- Handlers ----------------------------------------------------------------
