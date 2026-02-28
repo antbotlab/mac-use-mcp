@@ -2,13 +2,11 @@ import { z } from "zod";
 import { captureScreen } from "../helpers/screencapture.js";
 import { runInputHelper } from "../helpers/input-helper.js";
 import { zodToToolInputSchema } from "../helpers/schema.js";
+import { DEFAULT_MAX_DIMENSION } from "../constants.js";
 import { enqueue } from "../queue.js";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // -- Constants ---------------------------------------------------------------
-
-/** Default maximum dimension for resizing screenshots. */
-const DEFAULT_MAX_DIMENSION = 1024;
 
 /** Minimum allowed value for max_dimension. */
 const MIN_MAX_DIMENSION = 256;

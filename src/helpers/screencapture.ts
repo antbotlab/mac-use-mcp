@@ -3,14 +3,12 @@ import { readFile, unlink } from "node:fs/promises";
 import { promisify } from "node:util";
 import { randomBytes } from "node:crypto";
 import { escapeAppleScriptString } from "./applescript.js";
+import { DEFAULT_MAX_DIMENSION } from "../constants.js";
 
 const execFileAsync = promisify(execFile);
 
 /** Timeout for screencapture and image-processing commands (ms). */
 const COMMAND_TIMEOUT_MS = 10_000;
-
-/** Default maximum dimension for resizing screenshots. */
-const DEFAULT_MAX_DIMENSION = 1024;
 
 /** Prefix for temporary screenshot files. */
 const TMPFILE_PREFIX = "/tmp/mac-use-mcp-";
