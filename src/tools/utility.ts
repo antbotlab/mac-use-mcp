@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { zodToToolInputSchema } from "../helpers/schema.js";
 import { execFileAsync } from "../helpers/exec.js";
+import { PERMISSION_CHECK_TIMEOUT_MS } from "../constants.js";
 
 // -- Constants ---------------------------------------------------------------
 
@@ -74,7 +75,7 @@ export const utilityToolDefinitions: Tool[] = [
 async function testAccessibility(): Promise<boolean> {
   try {
     await execFileAsync("osascript", ["-e", ACCESSIBILITY_TEST_SCRIPT], {
-      timeout: 5_000,
+      timeout: PERMISSION_CHECK_TIMEOUT_MS,
     });
     return true;
   } catch {
@@ -91,7 +92,7 @@ async function testScreenRecording(): Promise<boolean> {
     await execFileAsync(
       "screencapture",
       ["-x", SCREEN_RECORDING_TEST_PATH],
-      { timeout: 5_000 },
+      { timeout: PERMISSION_CHECK_TIMEOUT_MS },
     );
 
     const info = await stat(SCREEN_RECORDING_TEST_PATH);

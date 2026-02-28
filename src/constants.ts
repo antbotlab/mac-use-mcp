@@ -128,6 +128,9 @@ export const INPUT_HELPER_TIMEOUT_MS = 5_000;
 /** Timeout for the `open` command in window management (ms). */
 export const OPEN_COMMAND_TIMEOUT_MS = 5_000;
 
+/** Timeout for permission check probes: accessibility and screen recording (ms). */
+export const PERMISSION_CHECK_TIMEOUT_MS = 5_000;
+
 /**
  * Standardized error messages used across the MCP server.
  */
