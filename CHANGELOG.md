@@ -7,8 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-03-01
+
 ### Added
 
+- MCP server with stdio transport and 16 tool endpoints
+- `screenshot` tool: full screen, region, and window capture with configurable format and max dimension
+- `click` tool: left/right/middle button, single/double/triple click, modifier keys
+- `move_mouse` tool: move cursor to screen coordinates
+- `scroll` tool: scroll in any direction at a position with configurable amount
+- `drag` tool: drag between two screen coordinates with configurable duration
+- `type_text` tool: type text via CGEvent key synthesis with full Unicode support (CJK, emoji)
+- `press_key` tool: simulate key press with modifier combos (e.g. `cmd+c`, `ctrl+shift+F5`)
+- `get_screen_info` tool: query display count, resolution, origin, and scale factor
+- `get_cursor_position` tool: read current mouse cursor coordinates
+- `list_windows` tool: enumerate visible windows with app, title, ID, position, size, and minimized state
+- `focus_window` tool: activate an application and optionally raise a specific window
+- `open_application` tool: launch an app by name or bundle identifier
+- `clipboard_read` tool: read macOS clipboard as plain text
+- `clipboard_write` tool: write text to macOS clipboard
+- `wait` tool: pause execution for a specified duration
+- `check_permissions` tool: verify Accessibility and Screen Recording permissions
+- Swift CGEvent input helper binary for mouse, keyboard, scroll, drag, and secure input detection
+- Serial execution queue to prevent race conditions between system-level operations
+- Screencapture helper with sips-based resize and base64 encoding
+- AppleScript helper with structured error parsing
+- Clipboard helper using native pbcopy/pbpaste
+- macOS virtual key code mappings (Carbon HIToolbox `Events.h` constants)
 - Project scaffolding with TypeScript, ESLint, and Prettier
 - GitHub Actions CI workflow for macOS
 - Open-source community files (contributing guide, code of conduct, security policy)
