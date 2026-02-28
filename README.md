@@ -24,8 +24,8 @@ mac-use-mcp exposes 16 tools to any MCP-compatible client:
 
 | Tool | Description |
 | --- | --- |
-| `screenshot` | Capture the screen or a specific region |
-| `click` | Click at screen coordinates (left, right, double) |
+| `screenshot` | Capture the screen, a region, or a window by title |
+| `click` | Click at screen coordinates with button, click count, and modifier options |
 | `move_mouse` | Move the cursor to a position |
 | `scroll` | Scroll in any direction at a position |
 | `drag` | Drag from one point to another |
