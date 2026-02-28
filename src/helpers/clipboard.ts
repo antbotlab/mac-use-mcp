@@ -31,7 +31,7 @@ export async function clipboardWrite(text: string): Promise<void> {
       "pbcopy",
       [],
       { timeout: CLIPBOARD_TIMEOUT_MS },
-      (error) => {
+      (error: Error | null) => {
         if (error) {
           reject(error);
         } else {

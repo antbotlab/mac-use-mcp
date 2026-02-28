@@ -78,7 +78,7 @@ const server = new Server(
 /**
  * List available tools.
  */
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
+server.setRequestHandler(ListToolsRequestSchema, () => ({
   tools: allToolDefinitions,
 }));
 
@@ -104,7 +104,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   try {
-    return await handler((args ?? {}) as Record<string, unknown>);
+    return await handler(args ?? {});
   } catch (error: unknown) {
     if (error instanceof ZodError) {
       const flat = error.flatten();
