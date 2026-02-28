@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { runInputHelper } from "../helpers/input-helper.js";
+import { zodToToolInputSchema } from "../helpers/schema.js";
 import { enqueue } from "../queue.js";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -90,31 +91,7 @@ export const mouseToolDefinitions: Tool[] = [
     name: "click",
     description:
       `Click at the specified screen coordinates. Supports left/right/middle button, single/double/triple click, and modifier keys. ${SILENT_HINT}`,
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        x: { type: "number", description: "X coordinate (non-negative integer)" },
-        y: { type: "number", description: "Y coordinate (non-negative integer)" },
-        button: {
-          type: "string",
-          enum: [...MOUSE_BUTTONS],
-          description: "Mouse button to click (default: left)",
-          default: "left",
-        },
-        click_count: {
-          type: "number",
-          enum: [1, 2, 3],
-          description: "Number of clicks: 1 (single), 2 (double), or 3 (triple)",
-          default: 1,
-        },
-        modifiers: {
-          type: "array",
-          items: { type: "string", enum: [...CLICK_MODIFIERS] },
-          description: "Modifier keys to hold during click",
-        },
-      },
-      required: ["x", "y"],
-    },
+    inputSchema: zodToToolInputSchema(ClickInputSchema),
     annotations: {
       readOnlyHint: false,
       destructiveHint: true,
@@ -123,14 +100,7 @@ export const mouseToolDefinitions: Tool[] = [
   {
     name: "move_mouse",
     description: `Move the mouse cursor to the specified screen coordinates without clicking. ${SILENT_HINT}`,
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        x: { type: "number", description: "X coordinate (non-negative integer)" },
-        y: { type: "number", description: "Y coordinate (non-negative integer)" },
-      },
-      required: ["x", "y"],
-    },
+    inputSchema: zodToToolInputSchema(MoveMouseInputSchema),
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
@@ -140,24 +110,7 @@ export const mouseToolDefinitions: Tool[] = [
     name: "scroll",
     description:
       `Scroll at the specified screen coordinates in the given direction. ${SILENT_HINT}`,
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        x: { type: "number", description: "X coordinate (non-negative integer)" },
-        y: { type: "number", description: "Y coordinate (non-negative integer)" },
-        direction: {
-          type: "string",
-          enum: [...SCROLL_DIRECTIONS],
-          description: "Scroll direction",
-        },
-        amount: {
-          type: "number",
-          description: `Scroll amount in discrete steps (default: ${SCROLL_DEFAULT_AMOUNT})`,
-          default: SCROLL_DEFAULT_AMOUNT,
-        },
-      },
-      required: ["x", "y", "direction"],
-    },
+    inputSchema: zodToToolInputSchema(ScrollInputSchema),
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
@@ -175,21 +128,7 @@ export const mouseToolDefinitions: Tool[] = [
       "",
       SILENT_HINT,
     ].join("\n"),
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        start_x: { type: "number", description: "Start X coordinate (non-negative integer)" },
-        start_y: { type: "number", description: "Start Y coordinate (non-negative integer)" },
-        end_x: { type: "number", description: "End X coordinate (non-negative integer)" },
-        end_y: { type: "number", description: "End Y coordinate (non-negative integer)" },
-        duration_ms: {
-          type: "number",
-          description: `Drag duration in milliseconds (default: ${DRAG_DEFAULT_DURATION_MS})`,
-          default: DRAG_DEFAULT_DURATION_MS,
-        },
-      },
-      required: ["start_x", "start_y", "end_x", "end_y"],
-    },
+    inputSchema: zodToToolInputSchema(DragInputSchema),
     annotations: {
       readOnlyHint: false,
       destructiveHint: true,

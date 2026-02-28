@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { zodToToolInputSchema } from "../helpers/schema.js";
 import { runAppleScript, escapeAppleScriptString } from "../helpers/applescript.js";
 import { enqueue } from "../queue.js";
 
@@ -60,16 +61,7 @@ export const windowToolDefinitions: Tool[] = [
     name: "list_windows",
     description:
       "List visible windows with their app name, title, ID, position, size, and minimized state. Optionally filter by application name.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        app: {
-          type: "string",
-          description:
-            "Application name to filter by. If omitted, list windows from all applications.",
-        },
-      },
-    },
+    inputSchema: zodToToolInputSchema(ListWindowsInputSchema),
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
@@ -79,21 +71,7 @@ export const windowToolDefinitions: Tool[] = [
     name: "focus_window",
     description:
       "Activate an application and optionally raise a specific window by title.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        app: {
-          type: "string",
-          description: "Application name to activate.",
-        },
-        title: {
-          type: "string",
-          description:
-            "Window title to raise. If omitted, the frontmost window of the application is activated.",
-        },
-      },
-      required: ["app"],
-    },
+    inputSchema: zodToToolInputSchema(FocusWindowInputSchema),
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
@@ -103,17 +81,7 @@ export const windowToolDefinitions: Tool[] = [
     name: "open_application",
     description:
       "Launch an application by name or bundle identifier.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        name: {
-          type: "string",
-          description:
-            "Application name (e.g. \"Safari\") or bundle identifier (e.g. \"com.apple.Safari\").",
-        },
-      },
-      required: ["name"],
-    },
+    inputSchema: zodToToolInputSchema(OpenApplicationInputSchema),
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,

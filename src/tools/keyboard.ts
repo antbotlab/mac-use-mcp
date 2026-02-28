@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { zodToToolInputSchema } from "../helpers/schema.js";
 import { runInputHelper } from "../helpers/input-helper.js";
 import { enqueue } from "../queue.js";
 import { KEY_CODES, MODIFIER_FLAGS } from "../constants.js";
@@ -75,38 +76,13 @@ export const keyboardToolDefinitions: Tool[] = [
     name: "type_text",
     description:
       "Type text at the current cursor position using CGEvent key synthesis. Supports full Unicode including CJK characters and emoji. If secure input is active (e.g. password fields), returns a note suggesting clipboard_write + press_key(\"cmd+v\") as an alternative.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        text: {
-          type: "string",
-          description:
-            "Text to type. Supports full Unicode including CJK and emoji.",
-        },
-        delay_ms: {
-          type: "number",
-          description:
-            "Delay between keystrokes in milliseconds (default 0).",
-        },
-      },
-      required: ["text"],
-    },
+    inputSchema: zodToToolInputSchema(TypeTextInputSchema),
   },
   {
     name: "press_key",
     description:
       'Simulate a key press with optional modifiers using CGEvent. Accepts a key combo string like "cmd+c", "ctrl+shift+F5", or "Return". Modifiers: cmd, ctrl, shift, opt/alt.',
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        key: {
-          type: "string",
-          description:
-            'Key combo string. Examples: "Return", "cmd+c", "ctrl+shift+F5", "alt+Tab".',
-        },
-      },
-      required: ["key"],
-    },
+    inputSchema: zodToToolInputSchema(PressKeyInputSchema),
   },
 ];
 

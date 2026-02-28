@@ -1,4 +1,6 @@
+import { z } from "zod";
 import { runInputHelper } from "../helpers/input-helper.js";
+import { zodToToolInputSchema } from "../helpers/schema.js";
 import { enqueue } from "../queue.js";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -12,6 +14,12 @@ interface DisplayInfo {
   scaleFactor: number;
 }
 
+// -- Schemas -----------------------------------------------------------------
+
+const GetScreenInfoInputSchema = z.object({});
+
+const GetCursorPositionInputSchema = z.object({});
+
 // -- Tool definitions --------------------------------------------------------
 
 export const screenToolDefinitions: Tool[] = [
@@ -19,10 +27,7 @@ export const screenToolDefinitions: Tool[] = [
     name: "get_screen_info",
     description:
       "Retrieve display configuration: number of displays, per-display resolution, origin, and scale factor.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {},
-    },
+    inputSchema: zodToToolInputSchema(GetScreenInfoInputSchema),
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
@@ -31,10 +36,7 @@ export const screenToolDefinitions: Tool[] = [
   {
     name: "get_cursor_position",
     description: "Get the current mouse cursor position in screen coordinates.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {},
-    },
+    inputSchema: zodToToolInputSchema(GetCursorPositionInputSchema),
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
