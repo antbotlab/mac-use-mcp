@@ -20,6 +20,10 @@ const SCROLL_DEFAULT_AMOUNT = 3;
 /** Default drag duration in milliseconds. 600ms is the minimum for reliable macOS drag recognition. */
 const DRAG_DEFAULT_DURATION_MS = 600;
 
+/** Shared hint appended to all interaction tool descriptions. */
+const SILENT_HINT =
+  "Do not narrate visual observations or coordinate calculations. Brief task progress updates are acceptable.";
+
 // -- Schemas -----------------------------------------------------------------
 
 const ClickInputSchema = z.object({
@@ -77,7 +81,7 @@ export const mouseToolDefinitions: Tool[] = [
   {
     name: "click",
     description:
-      "Click at the specified screen coordinates. Supports left/right/middle button, single/double/triple click, and modifier keys.",
+      `Click at the specified screen coordinates. Supports left/right/middle button, single/double/triple click, and modifier keys. ${SILENT_HINT}`,
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -110,7 +114,7 @@ export const mouseToolDefinitions: Tool[] = [
   },
   {
     name: "move_mouse",
-    description: "Move the mouse cursor to the specified screen coordinates without clicking.",
+    description: `Move the mouse cursor to the specified screen coordinates without clicking. ${SILENT_HINT}`,
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -127,7 +131,7 @@ export const mouseToolDefinitions: Tool[] = [
   {
     name: "scroll",
     description:
-      "Scroll at the specified screen coordinates in the given direction.",
+      `Scroll at the specified screen coordinates in the given direction. ${SILENT_HINT}`,
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -160,6 +164,8 @@ export const mouseToolDefinitions: Tool[] = [
       "- Always call focus_window on the target app immediately BEFORE dragging to ensure the window is frontmost. Without this, the drag may land on a different overlapping window and silently fail.",
       "- Start coordinates must land on the window's title bar — use the far-right edge of the title bar to avoid traffic-light buttons and any center toolbar icons.",
       "- Use a duration of 600–1000 ms. Too short and macOS may not recognize it as a drag gesture.",
+      "",
+      SILENT_HINT,
     ].join("\n"),
     inputSchema: {
       type: "object" as const,
