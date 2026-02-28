@@ -27,7 +27,8 @@ jobs:
 
       - run: pnpm lint
 
-      - name: Compile Swift helper
-        run: |
-          mkdir -p dist/bin
-          swiftc swift/input-helper.swift -o dist/bin/input-helper
+      - name: Format check
+        run: pnpm exec prettier --check "src/**/*.ts"
+
+      - name: Build Swift helper
+        run: bash scripts/build-swift.sh
