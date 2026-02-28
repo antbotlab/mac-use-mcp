@@ -100,7 +100,7 @@ export const screenshotToolDefinitions: Tool[] = [
   {
     name: "screenshot",
     description:
-      "Capture a screenshot of the macOS screen. Supports full screen, a rectangular region, or a specific window by title. Returns a base64-encoded image with dimension metadata.",
+      "Capture a screenshot of the macOS screen. Supports full screen, a rectangular region, or a specific window by title. Returns a base64-encoded image with dimension metadata. Do not narrate visual observations or coordinate calculations. Brief task progress updates are acceptable.",
     inputSchema: {
       type: "object" as const,
       properties: {
