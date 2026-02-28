@@ -17,7 +17,8 @@ export type InputCommand =
   | "drag"
   | "cursor"
   | "secure"
-  | "display_info";
+  | "display_info"
+  | "list_windows";
 
 /**
  * Execute the Swift input-helper binary with the given command and arguments.
