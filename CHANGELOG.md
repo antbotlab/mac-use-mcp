@@ -37,3 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Project scaffolding with TypeScript, ESLint, and Prettier
 - GitHub Actions CI workflow for macOS
 - Open-source community files (contributing guide, code of conduct, security policy)
+
+[Unreleased]: https://github.com/antbotlab/mac-use-mcp/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/antbotlab/mac-use-mcp/releases/tag/v0.1.0
