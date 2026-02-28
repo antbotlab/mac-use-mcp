@@ -1,7 +1,5 @@
 import { execFileAsync } from "./exec.js";
-
-/** Timeout for AppleScript execution (ms). */
-const COMMAND_TIMEOUT_MS = 15_000;
+import { APPLESCRIPT_TIMEOUT_MS } from "../constants.js";
 
 /**
  * Escape a string for safe interpolation inside AppleScript double-quoted literals.
@@ -28,7 +26,7 @@ export function escapeAppleScriptString(str: string): string {
 export async function runAppleScript(script: string): Promise<string> {
   try {
     const { stdout } = await execFileAsync("osascript", ["-e", script], {
-      timeout: COMMAND_TIMEOUT_MS,
+      timeout: APPLESCRIPT_TIMEOUT_MS,
     });
     return stdout.trim();
   } catch (error: unknown) {
@@ -41,7 +39,7 @@ export async function runAppleScript(script: string): Promise<string> {
 
     if (execError.killed || execError.signal === "SIGTERM") {
       throw new Error(
-        `AppleScript execution timed out after ${COMMAND_TIMEOUT_MS}ms`,
+        `AppleScript execution timed out after ${APPLESCRIPT_TIMEOUT_MS}ms`,
       );
     }
 

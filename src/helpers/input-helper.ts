@@ -1,10 +1,7 @@
 import { access } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
-import { ERROR_MESSAGES } from "../constants.js";
+import { ERROR_MESSAGES, INPUT_HELPER_TIMEOUT_MS } from "../constants.js";
 import { execFileAsync } from "./exec.js";
-
-/** Timeout for Swift helper binary execution (ms). */
-const COMMAND_TIMEOUT_MS = 5_000;
 
 /** Path to the compiled Swift input-helper binary. */
 const BINARY_PATH = new URL("../../dist/bin/input-helper", import.meta.url)
@@ -49,7 +46,7 @@ export async function runInputHelper(
     const { stdout } = await execFileAsync(
       BINARY_PATH,
       [command, JSON.stringify(args)],
-      { timeout: COMMAND_TIMEOUT_MS },
+      { timeout: INPUT_HELPER_TIMEOUT_MS },
     );
 
     return JSON.parse(stdout) as Record<string, unknown>;

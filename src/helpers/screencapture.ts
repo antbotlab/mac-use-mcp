@@ -1,11 +1,8 @@
 import { readFile, unlink } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { escapeAppleScriptString } from "./applescript.js";
-import { DEFAULT_MAX_DIMENSION } from "../constants.js";
+import { DEFAULT_MAX_DIMENSION, SCREENCAPTURE_TIMEOUT_MS } from "../constants.js";
 import { execFileAsync } from "./exec.js";
-
-/** Timeout for screencapture and image-processing commands (ms). */
-const COMMAND_TIMEOUT_MS = 10_000;
 
 /** Prefix for temporary screenshot files. */
 const TMPFILE_PREFIX = "/tmp/mac-use-mcp-";
@@ -88,7 +85,7 @@ async function getWindowId(windowTitle: string): Promise<string> {
   `;
 
   const { stdout } = await execFileAsync("osascript", ["-e", script], {
-    timeout: COMMAND_TIMEOUT_MS,
+    timeout: SCREENCAPTURE_TIMEOUT_MS,
   });
   return stdout.trim();
 }
@@ -105,7 +102,7 @@ async function getImageDimensions(
   const { stdout } = await execFileAsync(
     "sips",
     ["-g", "pixelWidth", "-g", "pixelHeight", filePath],
-    { timeout: COMMAND_TIMEOUT_MS },
+    { timeout: SCREENCAPTURE_TIMEOUT_MS },
   );
 
   const widthMatch = stdout.match(/pixelWidth:\s*(\d+)/);
@@ -192,7 +189,7 @@ export async function captureScreen(
 
     // Capture the screenshot
     await execFileAsync("screencapture", args, {
-      timeout: COMMAND_TIMEOUT_MS,
+      timeout: SCREENCAPTURE_TIMEOUT_MS,
     });
 
     // Get original dimensions (physical pixels) before resizing
@@ -204,7 +201,7 @@ export async function captureScreen(
 
     // Resize to fit within maxDimension
     await execFileAsync("sips", ["-Z", String(maxDimension), tmpPath], {
-      timeout: COMMAND_TIMEOUT_MS,
+      timeout: SCREENCAPTURE_TIMEOUT_MS,
     });
 
     // Get final dimensions after resizing

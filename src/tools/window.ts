@@ -3,12 +3,10 @@ import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { zodToToolInputSchema } from "../helpers/schema.js";
 import { execFileAsync } from "../helpers/exec.js";
 import { runAppleScript, escapeAppleScriptString } from "../helpers/applescript.js";
+import { OPEN_COMMAND_TIMEOUT_MS } from "../constants.js";
 import { enqueue } from "../queue.js";
 
 // -- Constants ---------------------------------------------------------------
-
-/** Timeout for the `open` command (ms). */
-const OPEN_COMMAND_TIMEOUT_MS = 5_000;
 
 /** Delimiter used to separate fields in AppleScript output. */
 const FIELD_DELIMITER = "|||";

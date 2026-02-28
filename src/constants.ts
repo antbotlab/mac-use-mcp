@@ -111,6 +111,23 @@ export const MODIFIER_FLAGS = {
 /** Default maximum dimension (width or height) for screenshot resizing. */
 export const DEFAULT_MAX_DIMENSION = 1024;
 
+// -- Timeouts ----------------------------------------------------------------
+
+/** Timeout for AppleScript execution via osascript (ms). */
+export const APPLESCRIPT_TIMEOUT_MS = 15_000;
+
+/** Timeout for clipboard commands: pbpaste, pbcopy (ms). */
+export const CLIPBOARD_TIMEOUT_MS = 5_000;
+
+/** Timeout for screencapture and sips image-processing commands (ms). */
+export const SCREENCAPTURE_TIMEOUT_MS = 10_000;
+
+/** Timeout for Swift input-helper binary execution (ms). */
+export const INPUT_HELPER_TIMEOUT_MS = 5_000;
+
+/** Timeout for the `open` command in window management (ms). */
+export const OPEN_COMMAND_TIMEOUT_MS = 5_000;
+
 /**
  * Standardized error messages used across the MCP server.
  */
