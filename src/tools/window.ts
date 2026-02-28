@@ -282,27 +282,7 @@ async function handleOpenApplication(
       timeout: OPEN_COMMAND_TIMEOUT_MS,
     });
   } catch (error: unknown) {
-    // If bundle ID failed, the error is final
-    if (flag === "-b") {
-      const msg =
-        error instanceof Error ? error.message : String(error);
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({
-              success: false,
-              error: `Failed to open application "${name}": ${msg}`,
-            }),
-          },
-        ],
-        isError: true,
-      };
-    }
-
-    // For app name, propagate the error as-is
-    const msg =
-      error instanceof Error ? error.message : String(error);
+    const msg = error instanceof Error ? error.message : String(error);
     return {
       content: [
         {
