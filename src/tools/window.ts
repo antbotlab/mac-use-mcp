@@ -178,9 +178,10 @@ function parseWindowRecords(raw: string): WindowInfo[] {
 
 /**
  * Reverse-DNS pattern: at least 3 dot-separated segments, each starting with
- * a letter and containing only alphanumerics or hyphens (e.g. "com.apple.Safari").
+ * a letter and containing only alphanumerics, hyphens, or underscores
+ * (e.g. "com.apple.Safari", "com.apple.driver.Apple_HDA").
  */
-const BUNDLE_ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9-]*(\.[a-zA-Z][a-zA-Z0-9-]*){2,}$/;
+const BUNDLE_ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z][a-zA-Z0-9_-]*){2,}$/;
 
 /**
  * Detect whether a name looks like a bundle identifier (reverse-DNS format).
