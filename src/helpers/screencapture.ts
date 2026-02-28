@@ -40,6 +40,8 @@ export interface CaptureOptions {
   maxDimension?: number;
   /** Output image format. Defaults to "png". */
   format?: ImageFormat;
+  /** Display scale factor (e.g. 2 for Retina). Defaults to 1. */
+  displayScaleFactor?: number;
 }
 
 /** Result of a screen capture operation. */
@@ -52,6 +54,10 @@ export interface ScreenshotResult {
   height: number;
   /** Description of the scaling applied. */
   scaleInfo: string;
+  /** Logical screen width in points (physical pixels / scaleFactor). */
+  screenWidth: number;
+  /** Logical screen height in points (physical pixels / scaleFactor). */
+  screenHeight: number;
 }
 
 /**
@@ -149,6 +155,7 @@ export async function captureScreen(
     windowTitle,
     maxDimension = DEFAULT_MAX_DIMENSION,
     format = "png",
+    displayScaleFactor = 1,
   } = options;
 
   const tmpPath = makeTmpPath(format);
@@ -191,8 +198,12 @@ export async function captureScreen(
       timeout: COMMAND_TIMEOUT_MS,
     });
 
-    // Get original dimensions before resizing
+    // Get original dimensions (physical pixels) before resizing
     const originalDims = await getImageDimensions(tmpPath);
+
+    // Compute logical dimensions (same coordinate system as CGEvent)
+    const logicalWidth = Math.round(originalDims.width / displayScaleFactor);
+    const logicalHeight = Math.round(originalDims.height / displayScaleFactor);
 
     // Resize to fit within maxDimension
     await execFileAsync("sips", ["-Z", String(maxDimension), tmpPath], {
@@ -203,9 +214,9 @@ export async function captureScreen(
     const finalDims = await getImageDimensions(tmpPath);
 
     const scaleInfo =
-      originalDims.width === finalDims.width && originalDims.height === finalDims.height
+      logicalWidth === finalDims.width && logicalHeight === finalDims.height
         ? `No resize needed (${finalDims.width}x${finalDims.height})`
-        : `Resized from ${originalDims.width}x${originalDims.height} to ${finalDims.width}x${finalDims.height}`;
+        : `Resized from ${logicalWidth}x${logicalHeight} to ${finalDims.width}x${finalDims.height}`;
 
     // Read file and encode to base64
     const buffer = await readFile(tmpPath);
@@ -216,6 +227,8 @@ export async function captureScreen(
       width: finalDims.width,
       height: finalDims.height,
       scaleInfo,
+      screenWidth: logicalWidth,
+      screenHeight: logicalHeight,
     };
   } finally {
     // Clean up temporary file

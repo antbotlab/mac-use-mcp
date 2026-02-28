@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { captureScreen } from "../helpers/screencapture.js";
+import { runInputHelper } from "../helpers/input-helper.js";
 import { enqueue } from "../queue.js";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -158,6 +159,11 @@ async function handleScreenshot(
   const parsed = ScreenshotInputSchema.parse(args);
 
   try {
+    // Get display scale factor for logical dimension computation
+    const displayResponse = await runInputHelper("display_info", {});
+    const displays = displayResponse.displays as Array<{ scaleFactor: number }>;
+    const scaleFactor = displays.length > 0 ? displays[0].scaleFactor : 1;
+
     const result = await captureScreen({
       mode: parsed.mode,
       region:
@@ -167,6 +173,7 @@ async function handleScreenshot(
       windowTitle: parsed.mode === "window" ? parsed.window_title : undefined,
       maxDimension: parsed.max_dimension,
       format: parsed.format,
+      displayScaleFactor: scaleFactor,
     });
 
     const mimeType = parsed.format === "jpeg" ? "image/jpeg" : "image/png";
@@ -181,10 +188,10 @@ async function handleScreenshot(
         {
           type: "text" as const,
           text: [
-            `Image dimensions: ${result.width}x${result.height} (logical pixels)`,
+            `Image dimensions: ${result.width}x${result.height} (pixels)`,
             `Scale: ${result.scaleInfo}`,
-            "Note: coordinates in this image map to screen coordinates at the same scale ratio. " +
-              "To convert image pixel positions to screen coordinates, multiply by (original_dimension / image_dimension).",
+            "Note: to convert image pixel positions to screen coordinates, " +
+              `multiply by (screen_dimension / image_dimension). Screen is ${result.screenWidth}x${result.screenHeight}.`,
           ].join("\n"),
         },
       ],
