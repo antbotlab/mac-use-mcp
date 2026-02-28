@@ -17,8 +17,8 @@ const CLICK_MODIFIERS = ["command", "shift", "option", "control"] as const;
 /** Default scroll amount in discrete steps. */
 const SCROLL_DEFAULT_AMOUNT = 3;
 
-/** Default drag duration in milliseconds. */
-const DRAG_DEFAULT_DURATION_MS = 500;
+/** Default drag duration in milliseconds. 600ms is the minimum for reliable macOS drag recognition. */
+const DRAG_DEFAULT_DURATION_MS = 600;
 
 // -- Schemas -----------------------------------------------------------------
 

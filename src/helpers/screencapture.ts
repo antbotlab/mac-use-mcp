@@ -8,12 +8,6 @@ const execFileAsync = promisify(execFile);
 /** Timeout for screencapture and image-processing commands (ms). */
 const COMMAND_TIMEOUT_MS = 10_000;
 
-/**
- * Sentinel value indicating that maxDimension should match the screen's
- * logical resolution so image coordinates map 1:1 to screen coordinates.
- */
-const AUTO_MAX_DIMENSION = 0;
-
 /** Prefix for temporary screenshot files. */
 const TMPFILE_PREFIX = "/tmp/mac-use-mcp-";
 
@@ -142,10 +136,11 @@ function makeTmpPath(format: ImageFormat): string {
  * Capture a screenshot of the macOS screen using the native screencapture CLI.
  *
  * Supports full screen, rectangular region, and single-window capture modes.
- * The captured image is resized to fit within maxDimension, encoded as base64,
- * and the temporary file is cleaned up before returning.
+ * The captured image is resized to fit within maxDimension (defaults to logical
+ * screen resolution for 1:1 coordinate mapping), encoded as base64, and the
+ * temporary file is cleaned up before returning.
  *
- * @param options - Capture configuration. Defaults to full-screen PNG at 1024px max.
+ * @param options - Capture configuration. Defaults to full-screen PNG at logical resolution.
  * @returns Screenshot data including base64 content and dimensions.
  * @throws If screencapture fails, the window is not found, or image processing errors occur.
  */
@@ -156,7 +151,7 @@ export async function captureScreen(
     mode = "full",
     region,
     windowTitle,
-    maxDimension: maxDimensionOpt = AUTO_MAX_DIMENSION,
+    maxDimension: maxDimensionOpt,
     format = "png",
     displayScaleFactor = 1,
   } = options;
@@ -208,9 +203,9 @@ export async function captureScreen(
     const logicalWidth = Math.round(originalDims.width / displayScaleFactor);
     const logicalHeight = Math.round(originalDims.height / displayScaleFactor);
 
-    // Resize: auto (0) → match logical resolution; explicit → use user value
+    // Resize: undefined → match logical resolution; explicit → use user value
     const resizeTarget =
-      maxDimensionOpt === AUTO_MAX_DIMENSION
+      maxDimensionOpt == null
         ? Math.max(logicalWidth, logicalHeight)
         : maxDimensionOpt;
 
