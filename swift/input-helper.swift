@@ -170,6 +170,67 @@ func handleCursor() {
     ])
 }
 
+// MARK: - Keyboard Helpers
+
+/// Translate a virtual key code to Unicode character(s) using the current keyboard layout.
+///
+/// Returns nil for non-printable keys (Return, Tab, Escape, arrow keys, etc.).
+private func translateKeyCode(_ keyCode: UInt16, modifierFlags: CGEventFlags) -> String? {
+    guard let inputSource = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+          let rawLayoutData = TISGetInputSourceProperty(inputSource, kTISPropertyUnicodeKeyLayoutData) else {
+        return nil
+    }
+
+    let layoutData = unsafeBitCast(rawLayoutData, to: CFData.self)
+    let keyLayoutPtr = unsafeBitCast(
+        CFDataGetBytePtr(layoutData),
+        to: UnsafePointer<UCKeyboardLayout>.self
+    )
+
+    // Convert CGEventFlags to Carbon modifier key state
+    var modifierKeyState: UInt32 = 0
+    let rawFlags = modifierFlags.rawValue
+    if rawFlags & CGEventFlags.maskShift.rawValue != 0 {
+        modifierKeyState |= UInt32(shiftKey >> 8) & 0xFF
+    }
+    if rawFlags & CGEventFlags.maskCommand.rawValue != 0 {
+        modifierKeyState |= UInt32(cmdKey >> 8) & 0xFF
+    }
+    if rawFlags & CGEventFlags.maskAlternate.rawValue != 0 {
+        modifierKeyState |= UInt32(optionKey >> 8) & 0xFF
+    }
+    if rawFlags & CGEventFlags.maskControl.rawValue != 0 {
+        modifierKeyState |= UInt32(controlKey >> 8) & 0xFF
+    }
+
+    var deadKeyState: UInt32 = 0
+    let maxChars = 4
+    var length = 0
+    var chars = [UniChar](repeating: 0, count: maxChars)
+
+    let status = UCKeyTranslate(
+        keyLayoutPtr,
+        keyCode,
+        UInt16(kUCKeyActionDown),
+        modifierKeyState,
+        UInt32(LMGetKbdType()),
+        UInt32(kUCKeyTranslateNoDeadKeysBit),
+        &deadKeyState,
+        maxChars,
+        &length,
+        &chars
+    )
+
+    guard status == noErr, length > 0 else { return nil }
+
+    let result = String(utf16CodeUnits: chars, count: length)
+    // Skip control characters (Return=\r, Tab=\t, Escape=\u{1b}, etc.)
+    if result.unicodeScalars.allSatisfy({ $0.value < 32 }) {
+        return nil
+    }
+    return result
+}
+
 // MARK: - Keyboard Command Handlers
 
 /// Maximum number of UTF-16 code units per chunk for keyboardSetUnicodeString.
@@ -224,6 +285,8 @@ func handleType(_ args: [String: Any]) {
 /// Handle the "key" command.
 ///
 /// Synthesizes a single key press with optional modifier flags.
+/// Populates Unicode character data via UCKeyTranslate so that apps
+/// relying on character data (e.g. Calculator) receive the correct input.
 ///
 /// Args: {"code":Int, "modifiers":["cmd","shift","ctrl","opt"]}
 ///   - code:      Virtual key code (e.g. 0 = 'a', 36 = Return).
@@ -242,6 +305,13 @@ func handleKey(_ args: [String: Any]) {
 
     applyModifiers(keyDown, modifiers)
     applyModifiers(keyUp, modifiers)
+
+    // Populate Unicode character data for apps that rely on it (e.g. Calculator)
+    if let character = translateKeyCode(UInt16(code), modifierFlags: keyDown.flags) {
+        var utf16 = Array(character.utf16)
+        keyDown.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
+        keyUp.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
+    }
 
     keyDown.post(tap: .cghidEventTap)
     keyUp.post(tap: .cghidEventTap)
