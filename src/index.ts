@@ -17,6 +17,26 @@ import {
   screenToolDefinitions,
   screenToolHandlers,
 } from "./tools/screen.js";
+import {
+  screenshotToolDefinitions,
+  screenshotToolHandlers,
+} from "./tools/screenshot.js";
+import {
+  mouseToolDefinitions,
+  mouseToolHandlers,
+} from "./tools/mouse.js";
+import {
+  keyboardToolDefinitions,
+  keyboardToolHandlers,
+} from "./tools/keyboard.js";
+import {
+  windowToolDefinitions,
+  windowToolHandlers,
+} from "./tools/window.js";
+import {
+  clipboardToolDefinitions,
+  clipboardToolHandlers,
+} from "./tools/clipboard.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -28,6 +48,11 @@ const SERVER_NAME = "mac-use-mcp";
 const allToolDefinitions = [
   ...utilityToolDefinitions,
   ...screenToolDefinitions,
+  ...screenshotToolDefinitions,
+  ...mouseToolDefinitions,
+  ...keyboardToolDefinitions,
+  ...windowToolDefinitions,
+  ...clipboardToolDefinitions,
 ];
 
 /** Unified handler map — tool name to async handler function. */
@@ -37,6 +62,11 @@ const allToolHandlers: Record<
 > = {
   ...utilityToolHandlers,
   ...screenToolHandlers,
+  ...screenshotToolHandlers,
+  ...mouseToolHandlers,
+  ...keyboardToolHandlers,
+  ...windowToolHandlers,
+  ...clipboardToolHandlers,
 };
 
 const server = new Server(
