@@ -385,10 +385,13 @@ func handleSecure() {
 ///
 /// Args: {} (none required)
 /// Returns: {"success":true, "displays":[{name, width, height, x, y, scaleFactor}]}
+/// Maximum number of displays to query from CGGetActiveDisplayList.
+private let maxDisplayCount: UInt32 = 32
+
 func handleDisplayInfo() {
-    var displayIDs = [CGDirectDisplayID](repeating: 0, count: 32)
+    var displayIDs = [CGDirectDisplayID](repeating: 0, count: Int(maxDisplayCount))
     var displayCount: UInt32 = 0
-    CGGetActiveDisplayList(32, &displayIDs, &displayCount)
+    CGGetActiveDisplayList(maxDisplayCount, &displayIDs, &displayCount)
 
     var displays: [[String: Any]] = []
     for i in 0..<Int(displayCount) {
