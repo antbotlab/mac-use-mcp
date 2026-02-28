@@ -417,6 +417,70 @@ func handleDisplayInfo() {
     outputJSON(["success": true, "displays": displays])
 }
 
+// MARK: - Window Enumeration Handler
+
+/// Handle the "list_windows" command.
+///
+/// Uses CGWindowListCopyWindowInfo for robust window enumeration.
+/// Returns real CGWindowIDs that work with screencapture -l.
+///
+/// Args: {"app":"optional filter"}
+/// Returns: {"success":true, "windows":[{app, title, id, x, y, width, height, minimized}]}
+func handleListWindows(_ args: [String: Any]) {
+    let filterApp = args["app"] as? String
+
+    guard let windowList = CGWindowListCopyWindowInfo(
+        [.optionAll, .excludeDesktopElements],
+        kCGNullWindowID
+    ) as? [[String: Any]] else {
+        outputJSON(["success": true, "windows": []])
+        return
+    }
+
+    var windows: [[String: Any]] = []
+
+    for window in windowList {
+        guard let ownerName = window[kCGWindowOwnerName as String] as? String,
+              let windowNumber = window[kCGWindowNumber as String] as? Int,
+              let bounds = window[kCGWindowBounds as String] as? [String: Any] else {
+            continue
+        }
+
+        // Only include normal windows (layer 0)
+        let layer = window[kCGWindowLayer as String] as? Int ?? -1
+        if layer != 0 { continue }
+
+        guard let x = bounds["X"] as? Double,
+              let y = bounds["Y"] as? Double,
+              let width = bounds["Width"] as? Double,
+              let height = bounds["Height"] as? Double else {
+            continue
+        }
+
+        // Skip tiny/invisible windows
+        if width < 1 || height < 1 { continue }
+
+        // Apply app filter
+        if let filter = filterApp, ownerName != filter { continue }
+
+        let title = window[kCGWindowName as String] as? String ?? ""
+        let isOnscreen = window[kCGWindowIsOnscreen as String] as? Bool ?? false
+
+        windows.append([
+            "app": ownerName,
+            "title": title,
+            "id": windowNumber,
+            "x": Int(x),
+            "y": Int(y),
+            "width": Int(width),
+            "height": Int(height),
+            "minimized": !isOnscreen,
+        ])
+    }
+
+    outputJSON(["success": true, "windows": windows])
+}
+
 // MARK: - Main Entry Point
 
 let arguments = CommandLine.arguments
@@ -455,6 +519,8 @@ case "secure":
     handleSecure()
 case "display_info":
     handleDisplayInfo()
+case "list_windows":
+    handleListWindows(args)
 default:
     fail("unknown command: \(command)")
 }
