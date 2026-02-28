@@ -33,7 +33,7 @@ export interface CaptureOptions {
   region?: CaptureRegion;
   /** Window title to capture. Required when mode is "window". */
   windowTitle?: string;
-  /** Maximum dimension (width or height) for resizing. Defaults to logical screen resolution (0 = auto). */
+  /** Maximum dimension (width or height) for resizing. Defaults to logical screen resolution when omitted. */
   maxDimension?: number;
   /** Output image format. Defaults to "png". */
   format?: ImageFormat;
