@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { readFile, unlink } from "node:fs/promises";
 import { promisify } from "node:util";
 import { randomBytes } from "node:crypto";
+import { escapeAppleScriptString } from "./applescript.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -71,13 +72,14 @@ export interface ScreenshotResult {
  * @throws If no matching window is found.
  */
 async function getWindowId(windowTitle: string): Promise<string> {
+  const safeTitle = escapeAppleScriptString(windowTitle);
   const script = `
     tell application "System Events"
       set matchedId to ""
       repeat with proc in (every process whose background only is false)
         try
           repeat with w in (every window of proc)
-            if name of w contains "${windowTitle.replace(/"/g, '\\"')}" then
+            if name of w contains "${safeTitle}" then
               set matchedId to id of w
               exit repeat
             end if
@@ -85,7 +87,7 @@ async function getWindowId(windowTitle: string): Promise<string> {
         end try
         if matchedId is not "" then exit repeat
       end repeat
-      if matchedId is "" then error "No window found matching: ${windowTitle.replace(/"/g, '\\"')}"
+      if matchedId is "" then error "No window found matching: ${safeTitle}"
       return matchedId
     end tell
   `;
