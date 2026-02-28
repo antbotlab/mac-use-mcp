@@ -26,11 +26,16 @@ func fail(_ message: String) -> Never {
 // MARK: - Modifier Helpers
 
 /// Map of human-readable modifier names to CGEventFlags raw values.
+/// Accepts both short ("cmd") and full ("command") names for robustness.
 private let modifierFlagMap: [String: UInt64] = [
-    "cmd":   0x100000,
-    "shift": 0x020000,
-    "ctrl":  0x040000,
-    "opt":   0x080000,
+    "cmd":     0x100000,
+    "command": 0x100000,
+    "shift":   0x020000,
+    "ctrl":    0x040000,
+    "control": 0x040000,
+    "opt":     0x080000,
+    "option":  0x080000,
+    "alt":     0x080000,
 ]
 
 /// Apply string-based modifier names to a CGEvent.
