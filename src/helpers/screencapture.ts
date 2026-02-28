@@ -8,6 +8,9 @@ const execFileAsync = promisify(execFile);
 /** Timeout for screencapture and image-processing commands (ms). */
 const COMMAND_TIMEOUT_MS = 10_000;
 
+/** Default maximum dimension for resizing screenshots. */
+const DEFAULT_MAX_DIMENSION = 1024;
+
 /** Prefix for temporary screenshot files. */
 const TMPFILE_PREFIX = "/tmp/mac-use-mcp-";
 
@@ -33,7 +36,7 @@ export interface CaptureOptions {
   region?: CaptureRegion;
   /** Window title to capture. Required when mode is "window". */
   windowTitle?: string;
-  /** Maximum dimension (width or height) for resizing. Defaults to logical screen resolution when omitted. */
+  /** Maximum dimension (width or height) for resizing. Defaults to 1024. */
   maxDimension?: number;
   /** Output image format. Defaults to "png". */
   format?: ImageFormat;
@@ -136,11 +139,10 @@ function makeTmpPath(format: ImageFormat): string {
  * Capture a screenshot of the macOS screen using the native screencapture CLI.
  *
  * Supports full screen, rectangular region, and single-window capture modes.
- * The captured image is resized to fit within maxDimension (defaults to logical
- * screen resolution for 1:1 coordinate mapping), encoded as base64, and the
- * temporary file is cleaned up before returning.
+ * The captured image is resized to fit within maxDimension, encoded as base64,
+ * and the temporary file is cleaned up before returning.
  *
- * @param options - Capture configuration. Defaults to full-screen PNG at logical resolution.
+ * @param options - Capture configuration. Defaults to full-screen PNG at 1024px max.
  * @returns Screenshot data including base64 content and dimensions.
  * @throws If screencapture fails, the window is not found, or image processing errors occur.
  */
@@ -151,7 +153,7 @@ export async function captureScreen(
     mode = "full",
     region,
     windowTitle,
-    maxDimension: maxDimensionOpt,
+    maxDimension = DEFAULT_MAX_DIMENSION,
     format = "png",
     displayScaleFactor = 1,
   } = options;
@@ -203,13 +205,8 @@ export async function captureScreen(
     const logicalWidth = Math.round(originalDims.width / displayScaleFactor);
     const logicalHeight = Math.round(originalDims.height / displayScaleFactor);
 
-    // Resize: undefined → match logical resolution; explicit → use user value
-    const resizeTarget =
-      maxDimensionOpt == null
-        ? Math.max(logicalWidth, logicalHeight)
-        : maxDimensionOpt;
-
-    await execFileAsync("sips", ["-Z", String(resizeTarget), tmpPath], {
+    // Resize to fit within maxDimension
+    await execFileAsync("sips", ["-Z", String(maxDimension), tmpPath], {
       timeout: COMMAND_TIMEOUT_MS,
     });
 

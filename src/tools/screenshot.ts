@@ -6,6 +6,9 @@ import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // -- Constants ---------------------------------------------------------------
 
+/** Default maximum dimension for resizing screenshots. */
+const DEFAULT_MAX_DIMENSION = 1024;
+
 /** Minimum allowed value for max_dimension. */
 const MIN_MAX_DIMENSION = 256;
 
@@ -60,8 +63,8 @@ const ScreenshotInputSchema = z
       .int()
       .min(MIN_MAX_DIMENSION)
       .max(MAX_MAX_DIMENSION)
-      .optional()
-      .describe(`Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}). Defaults to the screen's logical resolution so that image pixel coordinates map 1:1 to screen coordinates.`),
+      .default(DEFAULT_MAX_DIMENSION)
+      .describe(`Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}, default ${DEFAULT_MAX_DIMENSION})`),
     format: z
       .enum(["png", "jpeg"])
       .default("png")
@@ -96,11 +99,8 @@ const ScreenshotInputSchema = z
 export const screenshotToolDefinitions: Tool[] = [
   {
     name: "screenshot",
-    description: [
+    description:
       "Capture a screenshot of the macOS screen. Supports full screen, a rectangular region, or a specific window by title. Returns a base64-encoded image with dimension metadata.",
-      "",
-      "By default the image matches the screen's logical resolution — read coordinates directly from the image and pass them to click/drag/scroll without any conversion.",
-    ].join("\n"),
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -132,7 +132,8 @@ export const screenshotToolDefinitions: Tool[] = [
         },
         max_dimension: {
           type: "number",
-          description: `Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}). Defaults to the screen's logical resolution so that image pixel coordinates map 1:1 to screen coordinates.`,
+          description: `Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}, default ${DEFAULT_MAX_DIMENSION})`,
+          default: DEFAULT_MAX_DIMENSION,
         },
         format: {
           type: "string",
@@ -186,15 +187,12 @@ async function handleScreenshot(
         },
         {
           type: "text" as const,
-          text:
-            result.width === result.screenWidth && result.height === result.screenHeight
-              ? `Image dimensions: ${result.width}x${result.height} (matches screen logical resolution — use coordinates directly)`
-              : [
-                  `Image dimensions: ${result.width}x${result.height} (pixels)`,
-                  `Scale: ${result.scaleInfo}`,
-                  `Note: to convert image pixel positions to screen coordinates, ` +
-                    `multiply by (screen_dimension / image_dimension). Screen is ${result.screenWidth}x${result.screenHeight}.`,
-                ].join("\n"),
+          text: [
+            `Image dimensions: ${result.width}x${result.height} (pixels)`,
+            `Scale: ${result.scaleInfo}`,
+            "Note: to convert image pixel positions to screen coordinates, " +
+              `multiply by (screen_dimension / image_dimension). Screen is ${result.screenWidth}x${result.screenHeight}.`,
+          ].join("\n"),
         },
       ],
     };
