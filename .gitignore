@@ -25,3 +25,6 @@ npm-debug.log*
 # Swift build artifacts
 swift/*.o
 swift/*.d
+
+# Claude Code
+.claude/
