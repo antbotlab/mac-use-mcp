@@ -22,7 +22,8 @@ export type InputCommand =
   | "scroll"
   | "drag"
   | "cursor"
-  | "secure";
+  | "secure"
+  | "display_info";
 
 /**
  * Execute the Swift input-helper binary with the given command and arguments.
