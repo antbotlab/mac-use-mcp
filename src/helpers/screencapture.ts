@@ -1,8 +1,9 @@
 import { readFile, unlink } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
-import { escapeAppleScriptString } from "./applescript.js";
 import { DEFAULT_MAX_DIMENSION, SCREENCAPTURE_TIMEOUT_MS } from "../constants.js";
 import { execFileAsync } from "./exec.js";
+import { runInputHelper } from "./input-helper.js";
+import { ListWindowsResponseSchema } from "../tools/window.js";
 
 /** Prefix for temporary screenshot files. */
 const TMPFILE_PREFIX = "/tmp/mac-use-mcp-";
@@ -54,40 +55,29 @@ export interface ScreenshotResult {
 }
 
 /**
- * Resolve the macOS window ID for a given window title using AppleScript.
+ * Resolve the macOS CGWindowID for a given window title using the Swift helper.
  *
- * Searches all running applications for a window whose name contains
- * the specified title (case-insensitive).
+ * Searches all windows for one whose title contains the specified text
+ * (case-insensitive). Returns the real CGWindowID compatible with screencapture -l.
  *
  * @param windowTitle - Partial or full window title to search for.
  * @returns The numeric CGWindowID as a string.
  * @throws If no matching window is found.
  */
 async function getWindowId(windowTitle: string): Promise<string> {
-  const safeTitle = escapeAppleScriptString(windowTitle);
-  const script = `
-    tell application "System Events"
-      set matchedId to ""
-      repeat with proc in (every process whose background only is false)
-        try
-          repeat with w in (every window of proc)
-            if name of w contains "${safeTitle}" then
-              set matchedId to id of w
-              exit repeat
-            end if
-          end repeat
-        end try
-        if matchedId is not "" then exit repeat
-      end repeat
-      if matchedId is "" then error "No window found matching: ${safeTitle}"
-      return matchedId
-    end tell
-  `;
+  const response = await runInputHelper("list_windows", {});
+  const result = ListWindowsResponseSchema.parse(response);
 
-  const { stdout } = await execFileAsync("osascript", ["-e", script], {
-    timeout: SCREENCAPTURE_TIMEOUT_MS,
-  });
-  return stdout.trim();
+  const titleLower = windowTitle.toLowerCase();
+  const match = result.windows.find(
+    w => w.title.toLowerCase().includes(titleLower),
+  );
+
+  if (!match) {
+    throw new Error(`No window found matching: ${windowTitle}`);
+  }
+
+  return String(match.id);
 }
 
 /**
