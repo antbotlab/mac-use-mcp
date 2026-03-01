@@ -7,14 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-01
+
+### Security
+- AppleScript string sanitization: strip all C0 control characters (U+0000–U+001F) and DEL (U+007F) before escaping
+- Input length limits (`.max()`) on all string input schemas to prevent abuse
+- Randomized temp paths for permission test files
+- `type_text` description warns that clipboard contents are temporarily replaced
+- `get_ui_elements` description warns about potential sensitive data exposure
+
 ### Added
+- `--version` and `--help` CLI flags
+- TTY detection with helpful message when run interactively
+- Node.js 22+ runtime version check
+- Annotations (`readOnlyHint`, `destructiveHint`) on keyboard tools
+- Zod validation for Swift screenshot responses (replaces `as unknown as` cast)
+- Universal binary (arm64 + x86_64) for Intel and Apple Silicon Macs
+- `.prettierrc` with default config
 - Unit test suite: 156 tests across 15 files covering schema validation, tool registration, error handling, pure helpers, and queue behavior
-- Vitest test runner with CI integration (`pnpm test` step in GitHub Actions)
-- `tsconfig.build.json` to separate build and type-check concerns (test files excluded from `dist/`)
+- Vitest test runner with CI integration
+- `tsconfig.build.json` to separate build and type-check concerns
 
 ### Changed
-- Build script uses `tsconfig.build.json` (`tsc -p tsconfig.build.json`) to exclude test files from output
-- Export pure helper functions for direct unit testing: `parseAppleScriptError`, `matchProcessName`, `scrollDirectionToDeltas`, `isBundleId`, `buildMenuClickScript`
+- `type_text` returns `typed_length` instead of echoing full text in response
+- `PASTE_SETTLE_MS` increased from 50ms to 100ms for clipboard reliability
+- `open_application` annotation corrected: `destructiveHint: true`
+- `check_permissions` routed through serial queue for correctness
+- Build script uses `tsconfig.build.json` to exclude test files from output
+- Export pure helper functions for direct unit testing
+
+### Removed
+- Legacy `screencapture` CLI fallback (~160 lines) — Swift binary is the sole capture path
+- Dead constants: `MODIFIER_FLAGS`, `SCREENCAPTURE_TIMEOUT_MS`, unused `ERROR_MESSAGES` entries
+
+### Fixed
+- Demo GIF renders on npm (absolute URL)
+- `package.json` description aligned with README ("Zero-native-dependency")
+
+### Docs
+- CONTRIBUTING.md: added test scripts (`pnpm test`, `pnpm test:watch`)
+- PR template: added test checklist item
+- README: permission caveat on "just works" tagline, macOS-only install note
 
 ## [0.2.0] - 2026-03-01
 
@@ -68,6 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI workflow for macOS
 - Open-source community files (contributing guide, code of conduct, security policy)
 
-[Unreleased]: https://github.com/antbotlab/mac-use-mcp/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/antbotlab/mac-use-mcp/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/antbotlab/mac-use-mcp/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/antbotlab/mac-use-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/antbotlab/mac-use-mcp/releases/tag/v0.1.0
