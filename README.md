@@ -2,6 +2,10 @@
 
 Zero-dependency macOS desktop automation via MCP.
 
+<p align="center">
+  <img src="./assets/demo.gif" alt="mac-use-mcp demo" width="800">
+</p>
+
 [![npm version](https://img.shields.io/npm/v/mac-use-mcp)](https://www.npmjs.com/package/mac-use-mcp)
 [![license](https://img.shields.io/npm/l/mac-use-mcp)](./LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
