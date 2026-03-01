@@ -55,6 +55,20 @@ func applyModifiers(_ event: CGEvent, _ modifiers: [String]) {
     event.flags = CGEventFlags(rawValue: rawFlags)
 }
 
+// MARK: - Bounds Check Helper
+
+/// Check whether a point is within any active display's bounds.
+///
+/// Returns a warning string if the point is outside all screens, or nil if within bounds.
+func offScreenWarning(x: CGFloat, y: CGFloat) -> String? {
+    let bounds = logicalScreenBounds()
+    let point = CGPoint(x: x, y: y)
+    if bounds.contains(point) {
+        return nil
+    }
+    return "Coordinates (\(Int(x)), \(Int(y))) are outside all screen bounds \(Int(bounds.origin.x)),\(Int(bounds.origin.y)) \(Int(bounds.size.width))x\(Int(bounds.size.height))"
+}
+
 // MARK: - Pointer Command Handlers
 
 /// Inter-event delay (microseconds) between click pairs so macOS recognizes
@@ -144,7 +158,11 @@ func handleClick(_ args: [String: Any]) {
         }
     }
 
-    outputJSON(["success": true])
+    var result: [String: Any] = ["success": true]
+    if let warning = offScreenWarning(x: x, y: y) {
+        result["warning"] = warning
+    }
+    outputJSON(result)
 }
 
 /// Handle the "move" command.
@@ -166,7 +184,12 @@ func handleMove(_ args: [String: Any]) {
     }
 
     event.post(tap: .cghidEventTap)
-    outputJSON(["success": true])
+
+    var result: [String: Any] = ["success": true]
+    if let warning = offScreenWarning(x: x, y: y) {
+        result["warning"] = warning
+    }
+    outputJSON(result)
 }
 
 /// Handle the "cursor" command.
@@ -375,7 +398,11 @@ func handleScroll(_ args: [String: Any]) {
     }
     scrollEvent.post(tap: .cghidEventTap)
 
-    outputJSON(["success": true])
+    var result: [String: Any] = ["success": true]
+    if let warning = offScreenWarning(x: x, y: y) {
+        result["warning"] = warning
+    }
+    outputJSON(result)
 }
 
 // MARK: - Drag Command Handler
@@ -446,7 +473,15 @@ func handleDrag(_ args: [String: Any]) {
     }
     upEvent.post(tap: .cghidEventTap)
 
-    outputJSON(["success": true])
+    var result: [String: Any] = ["success": true]
+    // Check both start and end points
+    var warnings: [String] = []
+    if let w = offScreenWarning(x: sx, y: sy) { warnings.append("start: \(w)") }
+    if let w = offScreenWarning(x: ex, y: ey) { warnings.append("end: \(w)") }
+    if !warnings.isEmpty {
+        result["warning"] = warnings.joined(separator: "; ")
+    }
+    outputJSON(result)
 }
 
 // MARK: - Secure Input Status Handler

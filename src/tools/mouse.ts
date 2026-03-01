@@ -197,7 +197,7 @@ async function handleClick(
 ): Promise<CallToolResult> {
   const parsed = ClickInputSchema.parse(args);
 
-  await runInputHelper("click", {
+  const result = await runInputHelper("click", {
     x: parsed.x,
     y: parsed.y,
     button: parsed.button,
@@ -207,18 +207,18 @@ async function handleClick(
       : {}),
   });
 
+  const response: Record<string, unknown> = {
+    clicked: { x: parsed.x, y: parsed.y },
+    button: parsed.button,
+    click_count: parsed.click_count,
+    modifiers: parsed.modifiers ?? [],
+  };
+  if (typeof result.warning === "string") {
+    response.warning = result.warning;
+  }
+
   return {
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify({
-          clicked: { x: parsed.x, y: parsed.y },
-          button: parsed.button,
-          click_count: parsed.click_count,
-          modifiers: parsed.modifiers ?? [],
-        }),
-      },
-    ],
+    content: [{ type: "text" as const, text: JSON.stringify(response) }],
   };
 }
 
@@ -228,15 +228,17 @@ async function handleMoveMouse(
 ): Promise<CallToolResult> {
   const parsed = MoveMouseInputSchema.parse(args);
 
-  await runInputHelper("move", { x: parsed.x, y: parsed.y });
+  const result = await runInputHelper("move", { x: parsed.x, y: parsed.y });
+
+  const response: Record<string, unknown> = {
+    moved_to: { x: parsed.x, y: parsed.y },
+  };
+  if (typeof result.warning === "string") {
+    response.warning = result.warning;
+  }
 
   return {
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify({ moved_to: { x: parsed.x, y: parsed.y } }),
-      },
-    ],
+    content: [{ type: "text" as const, text: JSON.stringify(response) }],
   };
 }
 
@@ -269,24 +271,24 @@ async function handleScroll(
   const parsed = ScrollInputSchema.parse(args);
   const { dx, dy } = scrollDirectionToDeltas(parsed.direction, parsed.amount);
 
-  await runInputHelper("scroll", {
+  const result = await runInputHelper("scroll", {
     x: parsed.x,
     y: parsed.y,
     dx,
     dy,
   });
 
+  const response: Record<string, unknown> = {
+    scrolled_at: { x: parsed.x, y: parsed.y },
+    direction: parsed.direction,
+    amount: parsed.amount,
+  };
+  if (typeof result.warning === "string") {
+    response.warning = result.warning;
+  }
+
   return {
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify({
-          scrolled_at: { x: parsed.x, y: parsed.y },
-          direction: parsed.direction,
-          amount: parsed.amount,
-        }),
-      },
-    ],
+    content: [{ type: "text" as const, text: JSON.stringify(response) }],
   };
 }
 
@@ -296,7 +298,7 @@ async function handleDrag(
 ): Promise<CallToolResult> {
   const parsed = DragInputSchema.parse(args);
 
-  await runInputHelper("drag", {
+  const result = await runInputHelper("drag", {
     sx: parsed.start_x,
     sy: parsed.start_y,
     ex: parsed.end_x,
@@ -304,19 +306,19 @@ async function handleDrag(
     duration: parsed.duration_ms,
   });
 
+  const response: Record<string, unknown> = {
+    dragged: {
+      from: { x: parsed.start_x, y: parsed.start_y },
+      to: { x: parsed.end_x, y: parsed.end_y },
+    },
+    duration_ms: parsed.duration_ms,
+  };
+  if (typeof result.warning === "string") {
+    response.warning = result.warning;
+  }
+
   return {
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify({
-          dragged: {
-            from: { x: parsed.start_x, y: parsed.start_y },
-            to: { x: parsed.end_x, y: parsed.end_y },
-          },
-          duration_ms: parsed.duration_ms,
-        }),
-      },
-    ],
+    content: [{ type: "text" as const, text: JSON.stringify(response) }],
   };
 }
 
