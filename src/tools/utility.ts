@@ -1,4 +1,5 @@
 import { stat, unlink } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { zodToToolInputSchema } from "../helpers/schema.js";
@@ -11,8 +12,9 @@ import { PERMISSION_CHECK_TIMEOUT_MS } from "../constants.js";
 const ACCESSIBILITY_TEST_SCRIPT =
   'tell application "System Events" to return (exists process 1)';
 
-/** Temporary file used to probe Screen Recording permission. */
-const SCREEN_RECORDING_TEST_PATH = "/tmp/mac-use-mcp-permtest.png";
+/** Generate a unique temporary file path for Screen Recording permission probes. */
+const makeTmpPath = () =>
+  `/tmp/mac-use-mcp-permtest-${randomBytes(8).toString("hex")}.png`;
 
 /** Maximum allowed wait duration (ms). */
 const WAIT_MAX_MS = 10_000;
@@ -88,23 +90,24 @@ async function testAccessibility(): Promise<boolean> {
  * silent screenshot and checking whether the output file has content.
  */
 async function testScreenRecording(): Promise<boolean> {
+  const testPath = makeTmpPath();
   try {
-    await execFileAsync("screencapture", ["-x", SCREEN_RECORDING_TEST_PATH], {
+    await execFileAsync("screencapture", ["-x", testPath], {
       timeout: PERMISSION_CHECK_TIMEOUT_MS,
     });
 
-    const info = await stat(SCREEN_RECORDING_TEST_PATH);
+    const info = await stat(testPath);
     const granted = info.size > 0;
 
     // Clean up test file
-    await unlink(SCREEN_RECORDING_TEST_PATH).catch(() => {
+    await unlink(testPath).catch(() => {
       /* ignore cleanup errors */
     });
 
     return granted;
   } catch {
     // Clean up on failure path as well
-    await unlink(SCREEN_RECORDING_TEST_PATH).catch(() => {
+    await unlink(testPath).catch(() => {
       /* ignore */
     });
     return false;

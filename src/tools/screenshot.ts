@@ -60,6 +60,7 @@ const ScreenshotBaseSchema = z.object({
   window_title: z
     .string()
     .min(1)
+    .max(1_000)
     .optional()
     .describe("Window title to capture (required when mode is window)"),
   max_dimension: z

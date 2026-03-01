@@ -48,6 +48,38 @@ describe("escapeAppleScriptString", () => {
   it("handles string with only special characters", () => {
     expect(escapeAppleScriptString('""\\\\')).toBe('\\"\\"\\\\\\\\');
   });
+
+  it("strips newline characters", () => {
+    expect(escapeAppleScriptString("hello\nworld")).toBe("helloworld");
+  });
+
+  it("strips carriage return characters", () => {
+    expect(escapeAppleScriptString("hello\rworld")).toBe("helloworld");
+  });
+
+  it("strips null bytes", () => {
+    expect(escapeAppleScriptString("hello\x00world")).toBe("helloworld");
+  });
+
+  it("strips tab characters", () => {
+    expect(escapeAppleScriptString("hello\tworld")).toBe("helloworld");
+  });
+
+  it("strips DEL character (U+007F)", () => {
+    expect(escapeAppleScriptString("hello\x7fworld")).toBe("helloworld");
+  });
+
+  it("strips mixed control characters while preserving unicode", () => {
+    expect(escapeAppleScriptString('café\n你好\t"world"\r\x00')).toBe(
+      'café你好\\"world\\"',
+    );
+  });
+
+  it("preserves unicode characters above U+007F", () => {
+    expect(escapeAppleScriptString("日本語 émojis 🎉")).toBe(
+      "日本語 émojis 🎉",
+    );
+  });
 });
 
 describe("parseAppleScriptError", () => {

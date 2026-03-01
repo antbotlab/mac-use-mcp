@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { z, ZodError } from "zod";
 
+// Must mirror src/tools/accessibility.ts
 const GetUIElementsInputSchema = z.object({
-  app: z.string().optional(),
-  role: z.string().optional(),
-  title: z.string().optional(),
+  app: z.string().max(1_000).optional(),
+  role: z.string().max(200).optional(),
+  title: z.string().max(1_000).optional(),
   max_depth: z.number().int().min(1).max(10).default(5),
 });
 
@@ -56,5 +57,23 @@ describe("get_ui_elements schema", () => {
     expect(() => GetUIElementsInputSchema.parse({ max_depth: 3.5 })).toThrow(
       ZodError,
     );
+  });
+
+  it("rejects app exceeding max length (1000)", () => {
+    expect(() =>
+      GetUIElementsInputSchema.parse({ app: "a".repeat(1_001) }),
+    ).toThrow(ZodError);
+  });
+
+  it("rejects role exceeding max length (200)", () => {
+    expect(() =>
+      GetUIElementsInputSchema.parse({ role: "a".repeat(201) }),
+    ).toThrow(ZodError);
+  });
+
+  it("rejects title exceeding max length (1000)", () => {
+    expect(() =>
+      GetUIElementsInputSchema.parse({ title: "a".repeat(1_001) }),
+    ).toThrow(ZodError);
   });
 });

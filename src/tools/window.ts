@@ -16,6 +16,7 @@ import { enqueue } from "../queue.js";
 const ListWindowsInputSchema = z.object({
   app: z
     .string()
+    .max(1_000)
     .optional()
     .describe(
       "Application name to filter by. If omitted, list windows from all applications.",
@@ -23,9 +24,10 @@ const ListWindowsInputSchema = z.object({
 });
 
 const FocusWindowInputSchema = z.object({
-  app: z.string().describe("Application name to activate."),
+  app: z.string().max(1_000).describe("Application name to activate."),
   title: z
     .string()
+    .max(1_000)
     .optional()
     .describe(
       "Window title to raise. If omitted, the frontmost window of the application is activated.",
@@ -35,6 +37,7 @@ const FocusWindowInputSchema = z.object({
 const OpenApplicationInputSchema = z.object({
   name: z
     .string()
+    .max(1_000)
     .describe(
       'Application name (e.g. "Safari") or bundle identifier (e.g. "com.apple.Safari").',
     ),

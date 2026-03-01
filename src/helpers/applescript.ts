@@ -4,13 +4,24 @@ import { APPLESCRIPT_TIMEOUT_MS } from "../constants.js";
 /**
  * Escape a string for safe interpolation inside AppleScript double-quoted literals.
  *
- * Escapes backslashes first, then double quotes (order matters).
+ * First strips all C0 control characters (U+0000–U+001F) and DEL (U+007F) — AppleScript
+ * has no escape syntax for these in double-quoted strings. Then escapes backslashes
+ * and double quotes (order matters).
+ *
+ * Unicode above U+007F is safe (AppleScript handles UTF-8 natively).
  *
  * @param str - The raw string to escape.
  * @returns The escaped string safe for use inside AppleScript `"..."`.
  */
+/** Matches C0 control characters (U+0000–U+001F) and DEL (U+007F). */
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/g;
+
 export function escapeAppleScriptString(str: string): string {
-  return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return str
+    .replace(CONTROL_CHARS_RE, "")
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"');
 }
 
 /**

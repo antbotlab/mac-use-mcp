@@ -14,7 +14,7 @@ const ScreenshotBaseSchema = z.object({
   y: z.number().int().min(0).optional(),
   width: z.number().int().min(1).optional(),
   height: z.number().int().min(1).optional(),
-  window_title: z.string().min(1).optional(),
+  window_title: z.string().min(1).max(1_000).optional(),
   max_dimension: z
     .number()
     .int()
@@ -106,6 +106,15 @@ describe("screenshot schema validation", () => {
     expect(() => ScreenshotInputSchema.parse({ mode: "window" })).toThrow(
       ZodError,
     );
+  });
+
+  it("rejects window_title exceeding max length (1000)", () => {
+    expect(() =>
+      ScreenshotInputSchema.parse({
+        mode: "window",
+        window_title: "a".repeat(1_001),
+      }),
+    ).toThrow(ZodError);
   });
 
   it("rejects max_dimension between 1 and 255", () => {

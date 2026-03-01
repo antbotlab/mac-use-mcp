@@ -11,8 +11,8 @@ import { enqueue } from "../queue.js";
 // -- Schemas -----------------------------------------------------------------
 
 const ClickMenuInputSchema = z.object({
-  app: z.string().describe("Application name"),
-  path: z.string().describe('Menu path, e.g. "File > Save As..."'),
+  app: z.string().max(1_000).describe("Application name"),
+  path: z.string().max(1_000).describe('Menu path, e.g. "File > Save As..."'),
 });
 
 // -- Constants ---------------------------------------------------------------

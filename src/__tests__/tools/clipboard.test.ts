@@ -4,7 +4,7 @@ import { z, ZodError } from "zod";
 const ClipboardReadInputSchema = z.object({});
 
 const ClipboardWriteInputSchema = z.object({
-  text: z.string(),
+  text: z.string().max(100_000),
 });
 
 describe("clipboard_read schema", () => {
@@ -33,5 +33,18 @@ describe("clipboard_write schema", () => {
     expect(() => ClipboardWriteInputSchema.parse({ text: 123 })).toThrow(
       ZodError,
     );
+  });
+
+  it("rejects text exceeding max length (100000)", () => {
+    expect(() =>
+      ClipboardWriteInputSchema.parse({ text: "a".repeat(100_001) }),
+    ).toThrow(ZodError);
+  });
+
+  it("accepts text at max length (100000)", () => {
+    const result = ClipboardWriteInputSchema.parse({
+      text: "a".repeat(100_000),
+    });
+    expect(result.text).toHaveLength(100_000);
   });
 });
