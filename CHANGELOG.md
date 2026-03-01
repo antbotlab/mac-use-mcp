@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Unit test suite: 156 tests across 15 files covering schema validation, tool registration, error handling, pure helpers, and queue behavior
+- Vitest test runner with CI integration (`pnpm test` step in GitHub Actions)
+- `tsconfig.build.json` to separate build and type-check concerns (test files excluded from `dist/`)
+
+### Changed
+- Build script uses `tsconfig.build.json` (`tsc -p tsconfig.build.json`) to exclude test files from output
+- Export pure helper functions for direct unit testing: `parseAppleScriptError`, `matchProcessName`, `scrollDirectionToDeltas`, `isBundleId`, `buildMenuClickScript`
+
 ## [0.2.0] - 2026-03-01
 
 ### Added

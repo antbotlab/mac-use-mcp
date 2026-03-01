@@ -64,7 +64,7 @@ export async function runAppleScript(script: string): Promise<string> {
  * @param stderr - Raw stderr output from osascript.
  * @returns A formatted error message.
  */
-function parseAppleScriptError(stderr: string): string {
+export function parseAppleScriptError(stderr: string): string {
   // Match "execution error: <message> (-<code>)" pattern
   const executionErrorMatch = stderr.match(
     /execution error:\s*(.+?)\s*\((-?\d+)\)/,

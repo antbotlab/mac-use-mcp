@@ -236,7 +236,7 @@ async function handleMoveMouse(
  * Positive dy = scroll up (content moves down), negative dy = scroll down.
  * Positive dx = scroll left (content moves right), negative dx = scroll right.
  */
-function scrollDirectionToDeltas(
+export function scrollDirectionToDeltas(
   direction: (typeof SCROLL_DIRECTIONS)[number],
   amount: number,
 ): { dx: number; dy: number } {

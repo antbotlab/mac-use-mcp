@@ -117,7 +117,7 @@ const BUNDLE_ID_PATTERN =
 /**
  * Detect whether a name looks like a bundle identifier (reverse-DNS format).
  */
-function isBundleId(name: string): boolean {
+export function isBundleId(name: string): boolean {
   return BUNDLE_ID_PATTERN.test(name);
 }
 

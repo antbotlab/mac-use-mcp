@@ -23,4 +23,11 @@ export default [
       "@typescript-eslint/no-misused-promises": "error",
     },
   },
+  {
+    files: ["src/__tests__/**/*.ts"],
+    rules: {
+      // vitest matchers (expect.any, expect.objectContaining) return `any`
+      "@typescript-eslint/no-unsafe-assignment": "off",
+    },
+  },
 ];

@@ -55,7 +55,7 @@ export const menuToolDefinitions: Tool[] = [
  *   click menu item "Name" of menu "Sort By" of menu item "Sort By"
  *     of menu "View" of menu bar item "View" of menu bar 1
  */
-function buildMenuClickScript(app: string, parts: string[]): string {
+export function buildMenuClickScript(app: string, parts: string[]): string {
   const safeApp = escapeAppleScriptString(app);
   const escaped = parts.map(escapeAppleScriptString);
 
