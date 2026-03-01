@@ -40,6 +40,7 @@ export async function runAppleScript(script: string): Promise<string> {
     if (execError.killed || execError.signal === "SIGTERM") {
       throw new Error(
         `AppleScript execution timed out after ${APPLESCRIPT_TIMEOUT_MS}ms`,
+        { cause: error },
       );
     }
 
@@ -48,7 +49,7 @@ export async function runAppleScript(script: string): Promise<string> {
       ? parseAppleScriptError(stderr)
       : `AppleScript execution failed with exit code ${execError.code ?? "unknown"}`;
 
-    throw new Error(errorMessage);
+    throw new Error(errorMessage, { cause: error });
   }
 }
 
