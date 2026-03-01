@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-03-02
+
+### Fixed
+- Double/triple click recognition via inter-event delay in Swift CGEvent layer (#25)
+- Negative coordinate support for multi-monitor setups across click, move, scroll, drag, and screenshot schemas (#25)
+- Screenshot coordinate origin calculation for non-primary displays (#26)
+- `list_windows` filters out system artifacts and empty-title windows (#26)
+- Swift input-helper propagates structured error on failure instead of silent crash (#26)
+
+### Added
+- Off-screen coordinate warning when click/move/scroll/drag targets fall outside all display bounds (#26)
+
 ## [1.0.0] - 2026-03-01
 
 ### Security
@@ -101,7 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI workflow for macOS
 - Open-source community files (contributing guide, code of conduct, security policy)
 
-[Unreleased]: https://github.com/antbotlab/mac-use-mcp/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/antbotlab/mac-use-mcp/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/antbotlab/mac-use-mcp/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/antbotlab/mac-use-mcp/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/antbotlab/mac-use-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/antbotlab/mac-use-mcp/releases/tag/v0.1.0
