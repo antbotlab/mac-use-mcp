@@ -46,6 +46,19 @@ npx mac-use-mcp
 
 > `npx` will prompt to install the package on first run. Use `npx -y mac-use-mcp` to skip the confirmation.
 
+> [!TIP]
+> **Model selection matters.** Desktop automation involves screenshot–action loops that add up in token usage. A fast model with solid reasoning, good vision, and reliable tool calling is recommended:
+>
+> | Model | Provider |
+> |-------|----------|
+> | Gemini 3 Flash | Google |
+> | Claude Sonnet 4.6 | Anthropic |
+> | GPT-5 mini | OpenAI |
+> | MiniMax-M2.5 | MiniMax |
+> | Kimi K2.5 | Moonshot AI |
+> | Qwen3.5 | Alibaba |
+> | GLM-4.7 | Zhipu AI |
+
 ## Permission Setup
 
 mac-use-mcp requires two macOS permissions to function. Grant them once and you're set.
@@ -94,6 +107,61 @@ claude mcp add mac-use-mcp -- npx mac-use-mcp
 <summary><strong>Claude Desktop</strong></summary>
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "mac-use-mcp": {
+      "command": "npx",
+      "args": ["mac-use-mcp"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>OpenAI Codex</strong></summary>
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.mac-use]
+command = "npx"
+args = ["-y", "mac-use-mcp"]
+```
+
+Or via CLI:
+
+```bash
+codex mcp add mac-use -- npx -y mac-use-mcp
+```
+
+</details>
+
+<details>
+<summary><strong>Google Antigravity</strong></summary>
+
+Add to `~/.gemini/antigravity/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "mac-use-mcp": {
+      "command": "npx",
+      "args": ["mac-use-mcp"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Gemini CLI</strong></summary>
+
+Add to `~/.gemini/settings.json`:
 
 ```json
 {
@@ -166,6 +234,24 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 <summary><strong>Cline</strong></summary>
 
 Open Cline's MCP settings (in the Cline extension panel, click the MCP servers icon), then add:
+
+```json
+{
+  "mcpServers": {
+    "mac-use-mcp": {
+      "command": "npx",
+      "args": ["mac-use-mcp"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Kiro</strong></summary>
+
+Add to `~/.aws/amazonq/mcp.json`:
 
 ```json
 {
