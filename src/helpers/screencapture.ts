@@ -60,7 +60,7 @@ export interface ScreenshotResult {
 /** Schema shape for the Swift input-helper screenshot response. */
 interface SwiftScreenshotResponse {
   success: boolean;
-  base64: string;
+  base64?: string;
   width: number;
   height: number;
   origin_x: number;
@@ -130,10 +130,13 @@ async function captureViaInputHelper(
   maxDimension: number,
   format: ImageFormat,
 ): Promise<ScreenshotResult> {
+  const tmpPath = makeTmpPath(format);
+
   const helperArgs: Record<string, unknown> = {
     mode,
     max_dimension: maxDimension,
     format,
+    output_path: tmpPath,
   };
 
   if (mode === "region" && region) {
@@ -147,24 +150,31 @@ async function captureViaInputHelper(
     helperArgs.window_title = windowTitle;
   }
 
-  const response = (await runInputHelper(
-    "screenshot",
-    helperArgs,
-  )) as unknown as SwiftScreenshotResponse;
+  try {
+    const response = (await runInputHelper(
+      "screenshot",
+      helperArgs,
+    )) as unknown as SwiftScreenshotResponse;
 
-  if (!response.success) {
-    throw new Error(response.error ?? "Screenshot capture failed");
+    if (!response.success) {
+      throw new Error(response.error ?? "Screenshot capture failed");
+    }
+
+    const buffer = await readFile(tmpPath);
+    const base64 = buffer.toString("base64");
+
+    return {
+      base64,
+      width: response.width,
+      height: response.height,
+      originX: response.origin_x,
+      originY: response.origin_y,
+      scaleX: response.scale_x,
+      scaleY: response.scale_y,
+    };
+  } finally {
+    await unlink(tmpPath).catch(() => {});
   }
-
-  return {
-    base64: response.base64,
-    width: response.width,
-    height: response.height,
-    originX: response.origin_x,
-    originY: response.origin_y,
-    scaleX: response.scale_x,
-    scaleY: response.scale_y,
-  };
 }
 
 // -- Fallback path: screencapture CLI ----------------------------------------

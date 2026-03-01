@@ -787,7 +787,6 @@ func handleScreenshot(_ args: [String: Any]) {
 
     // Encode to PNG or JPEG
     let encoded = encodeImage(outputImage, format: format)
-    let base64 = encoded.base64EncodedString()
 
     // Compute scale factors for coordinate mapping.
     // scale converts image pixels to logical screen offsets:
@@ -799,16 +798,28 @@ func handleScreenshot(_ args: [String: Any]) {
         scaleY = Double(logicalHeight) / Double(outputHeight)
     }
 
-    outputJSON([
+    var result: [String: Any] = [
         "success": true,
-        "base64": base64,
         "width": outputWidth,
         "height": outputHeight,
         "origin_x": Double(originX),
         "origin_y": Double(originY),
         "scale_x": scaleX,
         "scale_y": scaleY,
-    ])
+    ]
+
+    if let outputPath = args["output_path"] as? String {
+        let url = URL(fileURLWithPath: outputPath)
+        do {
+            try encoded.write(to: url)
+        } catch {
+            fail("screenshot: failed to write image to \(outputPath) — \(error.localizedDescription)")
+        }
+    } else {
+        result["base64"] = encoded.base64EncodedString()
+    }
+
+    outputJSON(result)
 }
 
 // MARK: - Accessibility UI Elements Handler
