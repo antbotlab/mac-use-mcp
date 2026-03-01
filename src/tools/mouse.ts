@@ -49,7 +49,10 @@ const ClickInputSchema = z.object({
     .default("left")
     .describe("Mouse button to click (default: left)"),
   click_count: z
-    .union([z.literal(1), z.literal(2), z.literal(3)])
+    .number()
+    .int()
+    .min(1)
+    .max(3)
     .default(1)
     .describe("Number of clicks: 1 (single), 2 (double), or 3 (triple)"),
   modifiers: z
