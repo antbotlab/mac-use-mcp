@@ -133,6 +133,11 @@ func handleClick(_ args: [String: Any]) {
 
         downEvent.post(tap: .cghidEventTap)
         upEvent.post(tap: .cghidEventTap)
+
+        // Brief delay between click pairs so macOS recognizes multi-click sequences
+        if count > 1 && clickIndex < count {
+            usleep(50_000)
+        }
     }
 
     outputJSON(["success": true])
@@ -663,6 +668,8 @@ func handleScreenshot(_ args: [String: Any]) {
             []
         )
         let screenBounds = logicalScreenBounds()
+        originX = screenBounds.origin.x
+        originY = screenBounds.origin.y
         expectedLogicalWidth = screenBounds.size.width
         expectedLogicalHeight = screenBounds.size.height
 
