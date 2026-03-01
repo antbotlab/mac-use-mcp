@@ -76,12 +76,20 @@ export const keyboardToolDefinitions: Tool[] = [
     description:
       'Type text at the current cursor position using clipboard paste. Supports full Unicode including CJK characters and emoji. Temporarily replaces clipboard contents. Non-text clipboard content (images, files) will be lost permanently. If secure input is active (e.g. password fields), returns a note suggesting clipboard_write + press_key("cmd+v") as an alternative.',
     inputSchema: zodToToolInputSchema(TypeTextInputSchema),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+    },
   },
   {
     name: "press_key",
     description:
       'Simulate a key press with optional modifiers. Accepts a key combo string like "cmd+c", "ctrl+shift+F5", or "Return". Modifiers: cmd, ctrl, shift, opt/alt.',
     inputSchema: zodToToolInputSchema(PressKeyInputSchema),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+    },
   },
 ];
 
@@ -112,7 +120,10 @@ async function handleTypeText(
   // Paste via AppleScript Cmd+V
   await execFileAsync(
     "osascript",
-    ["-e", 'tell application "System Events" to key code 9 using command down'],
+    [
+      "-e",
+      `tell application "System Events" to key code ${KEY_CODES.v} using command down`,
+    ],
     { timeout: APPLESCRIPT_TIMEOUT_MS },
   );
 

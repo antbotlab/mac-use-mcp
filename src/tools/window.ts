@@ -102,7 +102,7 @@ export const windowToolDefinitions: Tool[] = [
     inputSchema: zodToToolInputSchema(OpenApplicationInputSchema),
     annotations: {
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
     },
   },
 ];
