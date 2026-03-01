@@ -18,7 +18,7 @@ npx mac-use-mcp
 
 ## Tools
 
-mac-use-mcp exposes 16 tools to any MCP-compatible client:
+mac-use-mcp exposes 18 tools to any MCP-compatible client:
 
 | Tool | Description |
 | --- | --- |
@@ -34,10 +34,14 @@ mac-use-mcp exposes 16 tools to any MCP-compatible client:
 | `list_windows` | List all visible windows with positions |
 | `focus_window` | Bring a window to the front |
 | `open_application` | Launch an application by name |
+| `click_menu` | Click a menu bar item by path (e.g., "File > Save As...") |
+| `get_ui_elements` | Query UI elements via Accessibility API (roles, positions, titles) |
 | `clipboard_read` | Read the system clipboard contents |
 | `clipboard_write` | Write text to the system clipboard |
 | `wait` | Pause for a specified duration |
 | `check_permissions` | Verify Accessibility and Screen Recording access |
+
+App names support fuzzy matching — `"chrome"` resolves to `"Google Chrome"`, `"code"` to `"Code"`, etc.
 
 ## MCP Client Configuration
 

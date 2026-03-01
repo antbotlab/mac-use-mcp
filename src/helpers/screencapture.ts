@@ -33,12 +33,10 @@ export interface CaptureOptions {
   region?: CaptureRegion;
   /** Window title to capture. Required when mode is "window". */
   windowTitle?: string;
-  /** Maximum dimension (width or height) for resizing. Defaults to 1024. */
+  /** Maximum dimension (width or height) for resizing. 0 means no resize. Defaults to 0. */
   maxDimension?: number;
   /** Output image format. Defaults to "png". */
   format?: ImageFormat;
-  /** Display scale factor (e.g. 2 for Retina). Defaults to 1. */
-  displayScaleFactor?: number;
 }
 
 /** Result of a screen capture operation. */
@@ -49,13 +47,127 @@ export interface ScreenshotResult {
   width: number;
   /** Height of the final image in pixels. */
   height: number;
-  /** Description of the scaling applied. */
-  scaleInfo: string;
-  /** Logical screen width in points (physical pixels / scaleFactor). */
-  screenWidth: number;
-  /** Logical screen height in points (physical pixels / scaleFactor). */
-  screenHeight: number;
+  /** Screen coordinate of image pixel (0,0) — X. */
+  originX: number;
+  /** Screen coordinate of image pixel (0,0) — Y. */
+  originY: number;
+  /** Multiply factor: image_x to screen offset. */
+  scaleX: number;
+  /** Multiply factor: image_y to screen offset. */
+  scaleY: number;
 }
+
+/** Schema shape for the Swift input-helper screenshot response. */
+interface SwiftScreenshotResponse {
+  success: boolean;
+  base64: string;
+  width: number;
+  height: number;
+  origin_x: number;
+  origin_y: number;
+  scale_x: number;
+  scale_y: number;
+  error?: string;
+}
+
+/**
+ * Capture a screenshot via the built-in Swift input-helper (primary path).
+ *
+ * Falls back to the legacy screencapture CLI pipeline if the Swift binary
+ * does not support the "screenshot" command (e.g. old binary version).
+ *
+ * @param options - Capture configuration. Defaults to full-screen PNG, no resize.
+ * @returns Screenshot data including base64 content, dimensions, and coordinate mapping.
+ */
+export async function captureScreen(
+  options: CaptureOptions = {},
+): Promise<ScreenshotResult> {
+  const {
+    mode = "full",
+    region,
+    windowTitle,
+    maxDimension = DEFAULT_MAX_DIMENSION,
+    format = "png",
+  } = options;
+
+  try {
+    return await captureViaInputHelper(
+      mode,
+      region,
+      windowTitle,
+      maxDimension,
+      format,
+    );
+  } catch (error: unknown) {
+    // If the error indicates the binary lacks the "screenshot" command,
+    // fall back to the legacy screencapture CLI pipeline
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("unknown command")) {
+      return captureViaScreencaptureCLI(
+        mode,
+        region,
+        windowTitle,
+        maxDimension,
+        format,
+      );
+    }
+    throw error;
+  }
+}
+
+// -- Primary path: Swift input-helper ----------------------------------------
+
+/**
+ * Capture via the Swift input-helper "screenshot" command.
+ *
+ * Uses CGWindowListCreateImage at logical resolution (no .bestResolution),
+ * with built-in resize and PNG/JPEG encoding.
+ */
+async function captureViaInputHelper(
+  mode: CaptureMode,
+  region: CaptureRegion | undefined,
+  windowTitle: string | undefined,
+  maxDimension: number,
+  format: ImageFormat,
+): Promise<ScreenshotResult> {
+  const helperArgs: Record<string, unknown> = {
+    mode,
+    max_dimension: maxDimension,
+    format,
+  };
+
+  if (mode === "region" && region) {
+    helperArgs.x = region.x;
+    helperArgs.y = region.y;
+    helperArgs.w = region.w;
+    helperArgs.h = region.h;
+  }
+
+  if (mode === "window" && windowTitle) {
+    helperArgs.window_title = windowTitle;
+  }
+
+  const response = (await runInputHelper(
+    "screenshot",
+    helperArgs,
+  )) as unknown as SwiftScreenshotResponse;
+
+  if (!response.success) {
+    throw new Error(response.error ?? "Screenshot capture failed");
+  }
+
+  return {
+    base64: response.base64,
+    width: response.width,
+    height: response.height,
+    originX: response.origin_x,
+    originY: response.origin_y,
+    scaleX: response.scale_x,
+    scaleY: response.scale_y,
+  };
+}
+
+// -- Fallback path: screencapture CLI ----------------------------------------
 
 /**
  * Resolve the macOS CGWindowID for a given window title using the Swift helper.
@@ -125,28 +237,19 @@ function makeTmpPath(format: ImageFormat): string {
 }
 
 /**
- * Capture a screenshot of the macOS screen using the native screencapture CLI.
+ * Legacy fallback: capture a screenshot using the macOS screencapture CLI.
  *
- * Supports full screen, rectangular region, and single-window capture modes.
- * The captured image is resized to fit within maxDimension, encoded as base64,
- * and the temporary file is cleaned up before returning.
- *
- * @param options - Capture configuration. Defaults to full-screen PNG at 1024px max.
- * @returns Screenshot data including base64 content and dimensions.
- * @throws If screencapture fails, the window is not found, or image processing errors occur.
+ * Used when the Swift input-helper binary does not support the "screenshot"
+ * command (e.g. older binary version). This path spawns 3 child processes
+ * (screencapture + sips + sips) and works in physical pixels.
  */
-export async function captureScreen(
-  options: CaptureOptions = {},
+async function captureViaScreencaptureCLI(
+  mode: CaptureMode,
+  region: CaptureRegion | undefined,
+  windowTitle: string | undefined,
+  maxDimension: number,
+  format: ImageFormat,
 ): Promise<ScreenshotResult> {
-  const {
-    mode = "full",
-    region,
-    windowTitle,
-    maxDimension = DEFAULT_MAX_DIMENSION,
-    format = "png",
-    displayScaleFactor = 1,
-  } = options;
-
   const tmpPath = makeTmpPath(format);
 
   try {
@@ -189,37 +292,42 @@ export async function captureScreen(
       timeout: SCREENCAPTURE_TIMEOUT_MS,
     });
 
-    // Get original dimensions (physical pixels) before resizing
+    // Get original dimensions (physical pixels)
     const originalDims = await getImageDimensions(tmpPath);
 
-    // Compute logical dimensions (same coordinate system as CGEvent)
-    const logicalWidth = Math.round(originalDims.width / displayScaleFactor);
-    const logicalHeight = Math.round(originalDims.height / displayScaleFactor);
+    // Resize to fit within maxDimension (only if maxDimension > 0)
+    if (maxDimension > 0) {
+      await execFileAsync("sips", ["-Z", String(maxDimension), tmpPath], {
+        timeout: SCREENCAPTURE_TIMEOUT_MS,
+      });
+    }
 
-    // Resize to fit within maxDimension
-    await execFileAsync("sips", ["-Z", String(maxDimension), tmpPath], {
-      timeout: SCREENCAPTURE_TIMEOUT_MS,
-    });
-
-    // Get final dimensions after resizing
+    // Get final dimensions
     const finalDims = await getImageDimensions(tmpPath);
-
-    const scaleInfo =
-      logicalWidth === finalDims.width && logicalHeight === finalDims.height
-        ? `No resize needed (${finalDims.width}x${finalDims.height})`
-        : `Resized from ${logicalWidth}x${logicalHeight} to ${finalDims.width}x${finalDims.height}`;
 
     // Read file and encode to base64
     const buffer = await readFile(tmpPath);
     const base64 = buffer.toString("base64");
 
+    // In the legacy path, compute approximate scale factors.
+    // screencapture outputs physical pixels, so coordinates are approximate.
+    const scaleX =
+      finalDims.width !== originalDims.width
+        ? originalDims.width / finalDims.width
+        : 1;
+    const scaleY =
+      finalDims.height !== originalDims.height
+        ? originalDims.height / finalDims.height
+        : 1;
+
     return {
       base64,
       width: finalDims.width,
       height: finalDims.height,
-      scaleInfo,
-      screenWidth: logicalWidth,
-      screenHeight: logicalHeight,
+      originX: 0,
+      originY: 0,
+      scaleX,
+      scaleY,
     };
   } finally {
     // Clean up temporary file

@@ -29,6 +29,11 @@ import {
   clipboardToolDefinitions,
   clipboardToolHandlers,
 } from "./tools/clipboard.js";
+import { menuToolDefinitions, menuToolHandlers } from "./tools/menu.js";
+import {
+  accessibilityToolDefinitions,
+  accessibilityToolHandlers,
+} from "./tools/accessibility.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -45,6 +50,8 @@ const allToolDefinitions = [
   ...keyboardToolDefinitions,
   ...windowToolDefinitions,
   ...clipboardToolDefinitions,
+  ...menuToolDefinitions,
+  ...accessibilityToolDefinitions,
 ];
 
 /** Unified handler map — tool name to async handler function. */
@@ -59,6 +66,8 @@ const allToolHandlers: Record<
   ...keyboardToolHandlers,
   ...windowToolHandlers,
   ...clipboardToolHandlers,
+  ...menuToolHandlers,
+  ...accessibilityToolHandlers,
 };
 
 const server = new Server(

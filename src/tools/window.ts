@@ -7,6 +7,7 @@ import {
   escapeAppleScriptString,
 } from "../helpers/applescript.js";
 import { runInputHelper } from "../helpers/input-helper.js";
+import { resolveAppName } from "../helpers/app-resolver.js";
 import { OPEN_COMMAND_TIMEOUT_MS } from "../constants.js";
 import { enqueue } from "../queue.js";
 
@@ -74,7 +75,7 @@ export const windowToolDefinitions: Tool[] = [
   {
     name: "list_windows",
     description:
-      "List visible windows with their app name, title, ID, position, size, and minimized state. Optionally filter by application name.",
+      "List visible windows with their app name, title, ID, position, size, and minimized state. Optionally filter by application name. App name supports fuzzy matching (case-insensitive, partial names like 'chrome' for 'Google Chrome').",
     inputSchema: zodToToolInputSchema(ListWindowsInputSchema),
     annotations: {
       readOnlyHint: true,
@@ -84,7 +85,7 @@ export const windowToolDefinitions: Tool[] = [
   {
     name: "focus_window",
     description:
-      "Activate an application and optionally raise a specific window by title.",
+      "Activate an application and optionally raise a specific window by title. App name supports fuzzy matching.",
     inputSchema: zodToToolInputSchema(FocusWindowInputSchema),
     annotations: {
       readOnlyHint: false,
@@ -93,7 +94,8 @@ export const windowToolDefinitions: Tool[] = [
   },
   {
     name: "open_application",
-    description: "Launch an application by name or bundle identifier.",
+    description:
+      "Launch an application by name or bundle identifier. App name supports fuzzy matching (e.g. 'chrome' → 'Google Chrome').",
     inputSchema: zodToToolInputSchema(OpenApplicationInputSchema),
     annotations: {
       readOnlyHint: false,
@@ -126,10 +128,8 @@ async function handleListWindows(
   args: Record<string, unknown>,
 ): Promise<CallToolResult> {
   const parsed = ListWindowsInputSchema.parse(args);
-  const response = await runInputHelper(
-    "list_windows",
-    parsed.app ? { app: parsed.app } : {},
-  );
+  const app = parsed.app ? await resolveAppName(parsed.app) : undefined;
+  const response = await runInputHelper("list_windows", app ? { app } : {});
   const result = ListWindowsResponseSchema.parse(response);
 
   const windows: WindowInfo[] = result.windows.map((w) => ({
@@ -156,7 +156,8 @@ async function handleFocusWindow(
   args: Record<string, unknown>,
 ): Promise<CallToolResult> {
   const parsed = FocusWindowInputSchema.parse(args);
-  const safeApp = escapeAppleScriptString(parsed.app);
+  const app = await resolveAppName(parsed.app);
+  const safeApp = escapeAppleScriptString(app);
 
   // Activate the application
   let script = `tell application "${safeApp}" to activate`;
@@ -199,7 +200,10 @@ async function handleOpenApplication(
   args: Record<string, unknown>,
 ): Promise<CallToolResult> {
   const parsed = OpenApplicationInputSchema.parse(args);
-  const name = parsed.name;
+  // Skip resolution for bundle IDs — they must be passed verbatim
+  const name = isBundleId(parsed.name)
+    ? parsed.name
+    : await resolveAppName(parsed.name);
 
   // Determine whether to use -a (app name) or -b (bundle ID)
   const flag = isBundleId(name) ? "-b" : "-a";

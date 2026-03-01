@@ -7,8 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-01
+
 ### Added
+- Built-in screenshot via `CGWindowListCreateImage` — single-process capture at logical resolution, replacing the 3-process `screencapture` + `sips` pipeline
+- Universal coordinate mapping formula (`screen = origin + pixel * scale`) in screenshot response, with 1:1 identity mapping by default
+- `click_menu` tool: click menu bar items by path (e.g., `"File > Save As..."`)
+- `get_ui_elements` tool: semantic UI element discovery via macOS Accessibility API with role/title filters and BFS traversal
+- Fuzzy app name matching for `list_windows`, `focus_window`, `open_application`, and `click_menu` (case-insensitive exact/prefix/contains)
+- Window title → ID resolution via `CGWindowListCopyWindowInfo` (replaces AppleScript, eliminates injection surface)
 - Operation guidance to tool descriptions (#3)
+
+### Changed
+- Default `max_dimension` changed from 1024 to 0 (no resize) — image coordinates equal screen coordinates out of the box
+- Screenshot captures at logical pixels (not physical) — eliminates Retina scaling mismatch
+- Swift `input-helper` binary now handles screenshot, window enumeration, and UI element queries natively
+- Build script targets macOS 13.0 explicitly to suppress SDK deprecation warnings
 
 ### Fixed
 - Use logical points instead of physical pixels for coordinates (#1)
@@ -45,5 +59,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI workflow for macOS
 - Open-source community files (contributing guide, code of conduct, security policy)
 
-[Unreleased]: https://github.com/antbotlab/mac-use-mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/antbotlab/mac-use-mcp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/antbotlab/mac-use-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/antbotlab/mac-use-mcp/releases/tag/v0.1.0

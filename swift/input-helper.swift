@@ -1,6 +1,8 @@
 import Carbon
+import Cocoa
 import CoreGraphics
 import Foundation
+import ImageIO
 
 // MARK: - Output Helpers
 
@@ -556,6 +558,424 @@ func handleListWindows(_ args: [String: Any]) {
     outputJSON(["success": true, "windows": windows])
 }
 
+// MARK: - Screenshot Helpers
+
+/// Resize a CGImage to the given dimensions using high-quality interpolation.
+///
+/// Returns the original image unchanged if newWidth/newHeight match the input.
+func resizeImage(_ image: CGImage, newWidth: Int, newHeight: Int) -> CGImage {
+    if image.width == newWidth && image.height == newHeight {
+        return image
+    }
+
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue
+        | CGBitmapInfo.byteOrder32Little.rawValue
+
+    guard let context = CGContext(
+        data: nil,
+        width: newWidth,
+        height: newHeight,
+        bitsPerComponent: 8,
+        bytesPerRow: 0,
+        space: colorSpace,
+        bitmapInfo: bitmapInfo
+    ) else {
+        fail("screenshot: failed to create resize context")
+    }
+
+    context.interpolationQuality = .high
+    context.draw(image, in: CGRect(x: 0, y: 0, width: newWidth, height: newHeight))
+
+    guard let resized = context.makeImage() else {
+        fail("screenshot: failed to create resized image")
+    }
+    return resized
+}
+
+/// Compute the logical bounding box of all active displays.
+///
+/// Returns the union of all display bounds in logical points — the same
+/// coordinate system as CGEvent and CGWindowListCopyWindowInfo.
+func logicalScreenBounds() -> CGRect {
+    var displayIDs = [CGDirectDisplayID](repeating: 0, count: Int(maxDisplayCount))
+    var count: UInt32 = 0
+    CGGetActiveDisplayList(maxDisplayCount, &displayIDs, &count)
+
+    var union = CGRect.null
+    for i in 0..<Int(count) {
+        union = union.union(CGDisplayBounds(displayIDs[i]))
+    }
+    return union
+}
+
+/// Encode a CGImage to PNG or JPEG data using ImageIO.
+func encodeImage(_ image: CGImage, format: String) -> Data {
+    let uti: CFString = format == "jpeg"
+        ? "public.jpeg" as CFString
+        : "public.png" as CFString
+    let imageData = NSMutableData()
+
+    guard let destination = CGImageDestinationCreateWithData(
+        imageData, uti, 1, nil
+    ) else {
+        fail("screenshot: failed to create image destination")
+    }
+
+    CGImageDestinationAddImage(destination, image, nil)
+
+    guard CGImageDestinationFinalize(destination) else {
+        fail("screenshot: failed to finalize image encoding")
+    }
+
+    return imageData as Data
+}
+
+// MARK: - Screenshot Command Handler
+
+/// Handle the "screenshot" command.
+///
+/// Captures a screenshot using CGWindowListCreateImage and normalizes the
+/// output to logical pixels (matching screen coordinates). On macOS versions
+/// where CGWindowListCreateImage returns Retina (2x) pixels, the image is
+/// downscaled to logical resolution automatically.
+///
+/// Args: {"mode":"full"|"region"|"window", "x":Int, "y":Int, "w":Int, "h":Int,
+///        "window_title":"...", "max_dimension":0, "format":"png"|"jpeg"}
+func handleScreenshot(_ args: [String: Any]) {
+    let mode = args["mode"] as? String ?? "full"
+    let maxDimension = args["max_dimension"] as? Int ?? 0
+    let format = args["format"] as? String ?? "png"
+
+    var capturedImage: CGImage?
+    var originX: CGFloat = 0
+    var originY: CGFloat = 0
+    // Expected logical size — used to detect and correct Retina captures
+    var expectedLogicalWidth: CGFloat = 0
+    var expectedLogicalHeight: CGFloat = 0
+
+    switch mode {
+    case "full":
+        capturedImage = CGWindowListCreateImage(
+            .infinite,
+            .optionOnScreenOnly,
+            kCGNullWindowID,
+            []
+        )
+        let screenBounds = logicalScreenBounds()
+        expectedLogicalWidth = screenBounds.size.width
+        expectedLogicalHeight = screenBounds.size.height
+
+    case "region":
+        let rx = requireCGFloat(args, key: "x", command: "screenshot")
+        let ry = requireCGFloat(args, key: "y", command: "screenshot")
+        let rw = requireCGFloat(args, key: "w", command: "screenshot")
+        let rh = requireCGFloat(args, key: "h", command: "screenshot")
+        let rect = CGRect(x: rx, y: ry, width: rw, height: rh)
+        originX = rx
+        originY = ry
+        expectedLogicalWidth = rw
+        expectedLogicalHeight = rh
+        capturedImage = CGWindowListCreateImage(
+            rect,
+            .optionOnScreenOnly,
+            kCGNullWindowID,
+            []
+        )
+
+    case "window":
+        guard let windowTitle = args["window_title"] as? String,
+              !windowTitle.isEmpty else {
+            fail("screenshot: missing required 'window_title' for window mode")
+        }
+
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionAll, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
+            fail("screenshot: failed to enumerate windows")
+        }
+
+        let titleLower = windowTitle.lowercased()
+        var foundWindowID: CGWindowID?
+        var foundBounds: CGRect?
+
+        for window in windowList {
+            guard let ownerName = window[kCGWindowOwnerName as String] as? String,
+                  let windowNumber = window[kCGWindowNumber as String] as? Int,
+                  let bounds = window[kCGWindowBounds as String] as? [String: Any]
+            else {
+                continue
+            }
+
+            let layer = window[kCGWindowLayer as String] as? Int ?? -1
+            if layer != 0 { continue }
+
+            let title = window[kCGWindowName as String] as? String ?? ""
+
+            // Case-insensitive substring match on title or owner name
+            if title.lowercased().contains(titleLower)
+                || ownerName.lowercased().contains(titleLower)
+            {
+                guard let bx = bounds["X"] as? Double,
+                      let by = bounds["Y"] as? Double,
+                      let bw = bounds["Width"] as? Double,
+                      let bh = bounds["Height"] as? Double else {
+                    continue
+                }
+                if bw < 1 || bh < 1 { continue }
+
+                foundWindowID = CGWindowID(windowNumber)
+                foundBounds = CGRect(x: bx, y: by, width: bw, height: bh)
+                break
+            }
+        }
+
+        guard let windowID = foundWindowID, let windowBounds = foundBounds else {
+            fail("screenshot: no window found matching '\(windowTitle)'")
+        }
+
+        originX = windowBounds.origin.x
+        originY = windowBounds.origin.y
+        expectedLogicalWidth = windowBounds.size.width
+        expectedLogicalHeight = windowBounds.size.height
+
+        capturedImage = CGWindowListCreateImage(
+            .null,
+            .optionIncludingWindow,
+            windowID,
+            []
+        )
+
+    default:
+        fail("screenshot: unknown mode '\(mode)' — expected full, region, or window")
+    }
+
+    guard let rawImage = capturedImage else {
+        fail("screenshot: CGWindowListCreateImage returned nil — Screen Recording permission may be required")
+    }
+
+    // Normalize to logical pixels. On some macOS versions (15+),
+    // CGWindowListCreateImage returns Retina-resolution images even without
+    // .bestResolution. Detect this by comparing captured size to expected
+    // logical size, and downscale if needed.
+    var logicalImage = rawImage
+    let logicalW = Int(expectedLogicalWidth)
+    let logicalH = Int(expectedLogicalHeight)
+
+    if logicalW > 0 && logicalH > 0
+        && (rawImage.width > logicalW || rawImage.height > logicalH)
+    {
+        logicalImage = resizeImage(rawImage, newWidth: logicalW, newHeight: logicalH)
+    }
+
+    // The "logical size" is what we use for coordinate math from here on
+    let logicalWidth = logicalImage.width
+    let logicalHeight = logicalImage.height
+
+    // Apply max_dimension resize on top of the logical image
+    var outputImage = logicalImage
+    if maxDimension > 0 && max(logicalWidth, logicalHeight) > maxDimension {
+        let scale = CGFloat(maxDimension) / CGFloat(max(logicalWidth, logicalHeight))
+        let newWidth = Int(CGFloat(logicalWidth) * scale)
+        let newHeight = Int(CGFloat(logicalHeight) * scale)
+        outputImage = resizeImage(logicalImage, newWidth: newWidth, newHeight: newHeight)
+    }
+
+    let outputWidth = outputImage.width
+    let outputHeight = outputImage.height
+
+    // Encode to PNG or JPEG
+    let encoded = encodeImage(outputImage, format: format)
+    let base64 = encoded.base64EncodedString()
+
+    // Compute scale factors for coordinate mapping.
+    // scale converts image pixels to logical screen offsets:
+    //   screen_x = origin_x + image_x * scale_x
+    var scaleX: Double = 1.0
+    var scaleY: Double = 1.0
+    if logicalWidth != outputWidth || logicalHeight != outputHeight {
+        scaleX = Double(logicalWidth) / Double(outputWidth)
+        scaleY = Double(logicalHeight) / Double(outputHeight)
+    }
+
+    outputJSON([
+        "success": true,
+        "base64": base64,
+        "width": outputWidth,
+        "height": outputHeight,
+        "origin_x": Double(originX),
+        "origin_y": Double(originY),
+        "scale_x": scaleX,
+        "scale_y": scaleY,
+    ])
+}
+
+// MARK: - Accessibility UI Elements Handler
+
+/// Maximum number of elements to return from a single get_ui_elements query.
+/// Capped to prevent excessive output that would overwhelm LLM context windows.
+private let maxUIElements = 50
+
+/// Traverse the AX tree in breadth-first order, collecting element metadata.
+///
+/// Filters by role and title when specified. Stops when `maxUIElements` is
+/// reached or the tree is exhausted up to `maxDepth` levels.
+///
+/// - Parameters:
+///   - root: The root AXUIElement (typically an application element).
+///   - maxDepth: Maximum tree traversal depth.
+///   - roleFilter: Optional AX role string to match exactly (e.g. "AXButton").
+///   - titleFilter: Optional case-insensitive substring to match against title or description.
+/// - Returns: Array of element dictionaries with role, title, position, size, and states.
+func collectUIElements(
+    root: AXUIElement,
+    maxDepth: Int,
+    roleFilter: String?,
+    titleFilter: String?
+) -> [[String: Any]] {
+    var results: [[String: Any]] = []
+    var queue: [(element: AXUIElement, depth: Int)] = [(root, 0)]
+
+    while !queue.isEmpty && results.count < maxUIElements {
+        let (element, depth) = queue.removeFirst()
+        if depth > maxDepth { continue }
+
+        // Extract role
+        var roleRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef)
+        let role = roleRef as? String ?? ""
+
+        // Extract title
+        var titleRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
+        let title = titleRef as? String
+
+        // Fallback: AXDescription
+        var descRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descRef)
+        let axDescription = descRef as? String
+
+        // Extract value
+        var valueRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &valueRef)
+        let value = valueRef as? String
+
+        // Extract position
+        var positionRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &positionRef)
+        var position = CGPoint.zero
+        if let positionValue = positionRef {
+            AXValueGetValue(positionValue as! AXValue, .cgPoint, &position)
+        }
+
+        // Extract size
+        var sizeRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef)
+        var size = CGSize.zero
+        if let sizeValue = sizeRef {
+            AXValueGetValue(sizeValue as! AXValue, .cgSize, &size)
+        }
+
+        // Extract enabled state
+        var enabledRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXEnabledAttribute as CFString, &enabledRef)
+        let enabled = enabledRef as? Bool ?? true
+
+        // Extract focused state
+        var focusedRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXFocusedAttribute as CFString, &focusedRef)
+        let focused = focusedRef as? Bool ?? false
+
+        // Apply filters
+        let displayTitle = title ?? axDescription
+        let passesRoleFilter = roleFilter == nil || role == roleFilter
+        let passesTitleFilter = titleFilter == nil ||
+            (displayTitle?.lowercased().contains(titleFilter!.lowercased()) ?? false)
+
+        // Include element if it has a meaningful role and passes all filters
+        if !role.isEmpty && passesRoleFilter && passesTitleFilter {
+            var entry: [String: Any] = [
+                "role": role,
+                "position": ["x": Int(position.x), "y": Int(position.y)],
+                "size": ["width": Int(size.width), "height": Int(size.height)],
+                "enabled": enabled,
+                "focused": focused,
+            ]
+            if let t = displayTitle, !t.isEmpty {
+                entry["title"] = t
+            }
+            if let v = value, !v.isEmpty {
+                entry["value"] = v
+            }
+            results.append(entry)
+        }
+
+        // Enqueue children for BFS traversal
+        if depth < maxDepth {
+            var childrenRef: CFTypeRef?
+            AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenRef)
+            if let children = childrenRef as? [AXUIElement] {
+                for child in children {
+                    queue.append((child, depth + 1))
+                }
+            }
+        }
+    }
+
+    return results
+}
+
+/// Handle the "get_ui_elements" command.
+///
+/// Queries visible UI elements of an application via the macOS Accessibility API.
+/// Uses BFS traversal with optional role and title filters.
+///
+/// Args: {"app":"optional", "role":"AXButton", "title":"substring", "max_depth":5}
+func handleGetUIElements(_ args: [String: Any]) {
+    let appName = args["app"] as? String
+    let roleFilter = args["role"] as? String
+    let titleFilter = args["title"] as? String
+    let maxDepth = args["max_depth"] as? Int ?? 5
+
+    // Resolve PID: fuzzy match against running apps, or use frontmost
+    let pid: pid_t
+    if let name = appName {
+        let apps = NSWorkspace.shared.runningApplications.filter {
+            $0.activationPolicy == .regular
+        }
+        let nameLower = name.lowercased()
+
+        let match = apps.first(where: { ($0.localizedName ?? "").lowercased() == nameLower })
+            ?? apps.first(where: { ($0.localizedName ?? "").lowercased().hasPrefix(nameLower) })
+            ?? apps.first(where: { ($0.localizedName ?? "").lowercased().contains(nameLower) })
+
+        guard let app = match else {
+            fail("get_ui_elements: no running application found matching '\(name)'")
+        }
+        pid = app.processIdentifier
+    } else {
+        guard let frontmost = NSWorkspace.shared.frontmostApplication else {
+            fail("get_ui_elements: no frontmost application found")
+        }
+        pid = frontmost.processIdentifier
+    }
+
+    let appElement = AXUIElementCreateApplication(pid)
+    let elements = collectUIElements(
+        root: appElement,
+        maxDepth: maxDepth,
+        roleFilter: roleFilter,
+        titleFilter: titleFilter
+    )
+
+    outputJSON([
+        "success": true,
+        "elements": elements,
+        "count": elements.count,
+    ])
+}
+
 // MARK: - Main Entry Point
 
 let arguments = CommandLine.arguments
@@ -596,6 +1016,10 @@ case "display_info":
     handleDisplayInfo()
 case "list_windows":
     handleListWindows(args)
+case "screenshot":
+    handleScreenshot(args)
+case "get_ui_elements":
+    handleGetUIElements(args)
 default:
     fail("unknown command: \(command)")
 }
