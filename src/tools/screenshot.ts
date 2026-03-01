@@ -1,19 +1,26 @@
 import { z } from "zod";
 import { captureScreen } from "../helpers/screencapture.js";
 import { runInputHelper } from "../helpers/input-helper.js";
+import { zodToToolInputSchema } from "../helpers/schema.js";
+import { DEFAULT_MAX_DIMENSION } from "../constants.js";
 import { enqueue } from "../queue.js";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // -- Constants ---------------------------------------------------------------
-
-/** Default maximum dimension for resizing screenshots. */
-const DEFAULT_MAX_DIMENSION = 1024;
 
 /** Minimum allowed value for max_dimension. */
 const MIN_MAX_DIMENSION = 256;
 
 /** Maximum allowed value for max_dimension. */
 const MAX_MAX_DIMENSION = 4096;
+
+// -- Response schemas (validate Swift helper output) -------------------------
+
+const DisplayScaleResponseSchema = z.object({
+  displays: z.array(z.object({
+    scaleFactor: z.number(),
+  })),
+});
 
 /** Permission setup instructions shown when screenshot capture fails. */
 const PERMISSION_INSTRUCTIONS =
@@ -23,53 +30,56 @@ const PERMISSION_INSTRUCTIONS =
 
 // -- Schemas -----------------------------------------------------------------
 
-const ScreenshotInputSchema = z
-  .object({
-    mode: z
-      .enum(["full", "region", "window"])
-      .default("full")
-      .describe('Capture mode: "full" (entire screen), "region" (rectangular area), or "window" (specific window)'),
-    x: z
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("Left edge x-coordinate in screen pixels (required when mode is region)"),
-    y: z
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("Top edge y-coordinate in screen pixels (required when mode is region)"),
-    width: z
-      .number()
-      .int()
-      .min(1)
-      .optional()
-      .describe("Region width in screen pixels (required when mode is region)"),
-    height: z
-      .number()
-      .int()
-      .min(1)
-      .optional()
-      .describe("Region height in screen pixels (required when mode is region)"),
-    window_title: z
-      .string()
-      .min(1)
-      .optional()
-      .describe("Window title to capture (required when mode is window)"),
-    max_dimension: z
-      .number()
-      .int()
-      .min(MIN_MAX_DIMENSION)
-      .max(MAX_MAX_DIMENSION)
-      .default(DEFAULT_MAX_DIMENSION)
-      .describe(`Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}, default ${DEFAULT_MAX_DIMENSION})`),
-    format: z
-      .enum(["png", "jpeg"])
-      .default("png")
-      .describe('Output image format: "png" (default) or "jpeg"'),
-  })
+/** Base object schema for screenshot input (used for JSON Schema generation). */
+const ScreenshotBaseSchema = z.object({
+  mode: z
+    .enum(["full", "region", "window"])
+    .default("full")
+    .describe('Capture mode: "full" (entire screen), "region" (rectangular area), or "window" (specific window)'),
+  x: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe("Left edge x-coordinate in screen pixels (required when mode is region)"),
+  y: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe("Top edge y-coordinate in screen pixels (required when mode is region)"),
+  width: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe("Region width in screen pixels (required when mode is region)"),
+  height: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe("Region height in screen pixels (required when mode is region)"),
+  window_title: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Window title to capture (required when mode is window)"),
+  max_dimension: z
+    .number()
+    .int()
+    .min(MIN_MAX_DIMENSION)
+    .max(MAX_MAX_DIMENSION)
+    .default(DEFAULT_MAX_DIMENSION)
+    .describe(`Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}, default ${DEFAULT_MAX_DIMENSION})`),
+  format: z
+    .enum(["png", "jpeg"])
+    .default("png")
+    .describe('Output image format: "png" (default) or "jpeg"'),
+});
+
+/** Full runtime validation schema with cross-field refinements. */
+const ScreenshotInputSchema = ScreenshotBaseSchema
   .refine(
     (data) => {
       if (data.mode === "region") {
@@ -101,48 +111,7 @@ export const screenshotToolDefinitions: Tool[] = [
     name: "screenshot",
     description:
       "Capture a screenshot of the macOS screen. Supports full screen, a rectangular region, or a specific window by title. Returns a base64-encoded image with dimension metadata. Do not narrate visual observations or coordinate calculations. Brief task progress updates are acceptable.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        mode: {
-          type: "string",
-          enum: ["full", "region", "window"],
-          description: 'Capture mode: "full" (entire screen), "region" (rectangular area), or "window" (specific window)',
-          default: "full",
-        },
-        x: {
-          type: "number",
-          description: "Left edge x-coordinate in screen pixels (required when mode is region)",
-        },
-        y: {
-          type: "number",
-          description: "Top edge y-coordinate in screen pixels (required when mode is region)",
-        },
-        width: {
-          type: "number",
-          description: "Region width in screen pixels (required when mode is region)",
-        },
-        height: {
-          type: "number",
-          description: "Region height in screen pixels (required when mode is region)",
-        },
-        window_title: {
-          type: "string",
-          description: "Window title to capture (required when mode is window)",
-        },
-        max_dimension: {
-          type: "number",
-          description: `Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}, default ${DEFAULT_MAX_DIMENSION})`,
-          default: DEFAULT_MAX_DIMENSION,
-        },
-        format: {
-          type: "string",
-          enum: ["png", "jpeg"],
-          description: 'Output image format: "png" (default) or "jpeg"',
-          default: "png",
-        },
-      },
-    },
+    inputSchema: zodToToolInputSchema(ScreenshotBaseSchema),
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
@@ -161,7 +130,7 @@ async function handleScreenshot(
   try {
     // Get display scale factor for logical dimension computation
     const displayResponse = await runInputHelper("display_info", {});
-    const displays = displayResponse.displays as Array<{ scaleFactor: number }>;
+    const { displays } = DisplayScaleResponseSchema.parse(displayResponse);
     const scaleFactor = displays.length > 0 ? displays[0].scaleFactor : 1;
 
     const result = await captureScreen({

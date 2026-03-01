@@ -1,15 +1,9 @@
-import { execFile } from "node:child_process";
 import { readFile, unlink } from "node:fs/promises";
-import { promisify } from "node:util";
 import { randomBytes } from "node:crypto";
-
-const execFileAsync = promisify(execFile);
-
-/** Timeout for screencapture and image-processing commands (ms). */
-const COMMAND_TIMEOUT_MS = 10_000;
-
-/** Default maximum dimension for resizing screenshots. */
-const DEFAULT_MAX_DIMENSION = 1024;
+import { DEFAULT_MAX_DIMENSION, SCREENCAPTURE_TIMEOUT_MS } from "../constants.js";
+import { execFileAsync } from "./exec.js";
+import { runInputHelper } from "./input-helper.js";
+import { ListWindowsResponseSchema } from "../tools/window.js";
 
 /** Prefix for temporary screenshot files. */
 const TMPFILE_PREFIX = "/tmp/mac-use-mcp-";
@@ -61,39 +55,29 @@ export interface ScreenshotResult {
 }
 
 /**
- * Resolve the macOS window ID for a given window title using AppleScript.
+ * Resolve the macOS CGWindowID for a given window title using the Swift helper.
  *
- * Searches all running applications for a window whose name contains
- * the specified title (case-insensitive).
+ * Searches all windows for one whose title contains the specified text
+ * (case-insensitive). Returns the real CGWindowID compatible with screencapture -l.
  *
  * @param windowTitle - Partial or full window title to search for.
  * @returns The numeric CGWindowID as a string.
  * @throws If no matching window is found.
  */
 async function getWindowId(windowTitle: string): Promise<string> {
-  const script = `
-    tell application "System Events"
-      set matchedId to ""
-      repeat with proc in (every process whose background only is false)
-        try
-          repeat with w in (every window of proc)
-            if name of w contains "${windowTitle.replace(/"/g, '\\"')}" then
-              set matchedId to id of w
-              exit repeat
-            end if
-          end repeat
-        end try
-        if matchedId is not "" then exit repeat
-      end repeat
-      if matchedId is "" then error "No window found matching: ${windowTitle.replace(/"/g, '\\"')}"
-      return matchedId
-    end tell
-  `;
+  const response = await runInputHelper("list_windows", {});
+  const result = ListWindowsResponseSchema.parse(response);
 
-  const { stdout } = await execFileAsync("osascript", ["-e", script], {
-    timeout: COMMAND_TIMEOUT_MS,
-  });
-  return stdout.trim();
+  const titleLower = windowTitle.toLowerCase();
+  const match = result.windows.find(
+    w => w.title.toLowerCase().includes(titleLower),
+  );
+
+  if (!match) {
+    throw new Error(`No window found matching: ${windowTitle}`);
+  }
+
+  return String(match.id);
 }
 
 /**
@@ -108,7 +92,7 @@ async function getImageDimensions(
   const { stdout } = await execFileAsync(
     "sips",
     ["-g", "pixelWidth", "-g", "pixelHeight", filePath],
-    { timeout: COMMAND_TIMEOUT_MS },
+    { timeout: SCREENCAPTURE_TIMEOUT_MS },
   );
 
   const widthMatch = stdout.match(/pixelWidth:\s*(\d+)/);
@@ -195,7 +179,7 @@ export async function captureScreen(
 
     // Capture the screenshot
     await execFileAsync("screencapture", args, {
-      timeout: COMMAND_TIMEOUT_MS,
+      timeout: SCREENCAPTURE_TIMEOUT_MS,
     });
 
     // Get original dimensions (physical pixels) before resizing
@@ -207,7 +191,7 @@ export async function captureScreen(
 
     // Resize to fit within maxDimension
     await execFileAsync("sips", ["-Z", String(maxDimension), tmpPath], {
-      timeout: COMMAND_TIMEOUT_MS,
+      timeout: SCREENCAPTURE_TIMEOUT_MS,
     });
 
     // Get final dimensions after resizing

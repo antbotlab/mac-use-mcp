@@ -1,10 +1,6 @@
 import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
-const execFileAsync = promisify(execFile);
-
-/** Timeout for clipboard commands (ms). */
-const COMMAND_TIMEOUT_MS = 5_000;
+import { execFileAsync } from "./exec.js";
+import { CLIPBOARD_TIMEOUT_MS } from "../constants.js";
 
 /**
  * Read the current contents of the macOS clipboard as plain text.
@@ -16,7 +12,7 @@ const COMMAND_TIMEOUT_MS = 5_000;
  */
 export async function clipboardRead(): Promise<string> {
   const { stdout } = await execFileAsync("pbpaste", [], {
-    timeout: COMMAND_TIMEOUT_MS,
+    timeout: CLIPBOARD_TIMEOUT_MS,
   });
   return stdout;
 }
@@ -34,7 +30,7 @@ export async function clipboardWrite(text: string): Promise<void> {
     const proc = execFile(
       "pbcopy",
       [],
-      { timeout: COMMAND_TIMEOUT_MS },
+      { timeout: CLIPBOARD_TIMEOUT_MS },
       (error) => {
         if (error) {
           reject(error);

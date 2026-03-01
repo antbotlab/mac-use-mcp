@@ -8,6 +8,7 @@ import {
   ListToolsRequestSchema,
   type CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
+import { ZodError } from "zod";
 
 import {
   utilityToolDefinitions,
@@ -105,6 +106,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     return await handler((args ?? {}) as Record<string, unknown>);
   } catch (error: unknown) {
+    if (error instanceof ZodError) {
+      const flat = error.flatten();
+      const fieldErrors = Object.entries(flat.fieldErrors)
+        .map(([field, msgs]) => `  ${field}: ${(msgs ?? []).join(", ")}`)
+        .join("\n");
+      const formErrors = flat.formErrors.length > 0
+        ? flat.formErrors.join(", ")
+        : "";
+      const detail = [formErrors, fieldErrors].filter(Boolean).join("\n");
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Validation error:\n${detail}`,
+          },
+        ],
+        isError: true,
+      };
+    }
     return {
       content: [
         {

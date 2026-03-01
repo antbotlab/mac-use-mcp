@@ -1,4 +1,6 @@
+import { z } from "zod";
 import { runInputHelper } from "../helpers/input-helper.js";
+import { zodToToolInputSchema } from "../helpers/schema.js";
 import { enqueue } from "../queue.js";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -12,6 +14,30 @@ interface DisplayInfo {
   scaleFactor: number;
 }
 
+// -- Schemas -----------------------------------------------------------------
+
+const GetScreenInfoInputSchema = z.object({});
+
+const GetCursorPositionInputSchema = z.object({});
+
+// -- Response schemas (validate Swift helper output) -------------------------
+
+const DisplayInfoResponseSchema = z.object({
+  displays: z.array(z.object({
+    name: z.string(),
+    width: z.number(),
+    height: z.number(),
+    x: z.number(),
+    y: z.number(),
+    scaleFactor: z.number(),
+  })),
+});
+
+const CursorPositionResponseSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+});
+
 // -- Tool definitions --------------------------------------------------------
 
 export const screenToolDefinitions: Tool[] = [
@@ -19,10 +45,7 @@ export const screenToolDefinitions: Tool[] = [
     name: "get_screen_info",
     description:
       "Retrieve display configuration: number of displays, per-display resolution, origin, and scale factor.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {},
-    },
+    inputSchema: zodToToolInputSchema(GetScreenInfoInputSchema),
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
@@ -31,10 +54,7 @@ export const screenToolDefinitions: Tool[] = [
   {
     name: "get_cursor_position",
     description: "Get the current mouse cursor position in screen coordinates.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {},
-    },
+    inputSchema: zodToToolInputSchema(GetCursorPositionInputSchema),
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
@@ -47,14 +67,7 @@ export const screenToolDefinitions: Tool[] = [
 /** Handle get_screen_info tool call. */
 async function handleGetScreenInfo(): Promise<CallToolResult> {
   const response = await runInputHelper("display_info", {});
-  const rawDisplays = response.displays as Array<{
-    name: string;
-    width: number;
-    height: number;
-    x: number;
-    y: number;
-    scaleFactor: number;
-  }>;
+  const { displays: rawDisplays } = DisplayInfoResponseSchema.parse(response);
 
   const displays: DisplayInfo[] = rawDisplays.map((d) => ({
     name: d.name,
@@ -81,8 +94,7 @@ async function handleGetScreenInfo(): Promise<CallToolResult> {
 /** Handle get_cursor_position tool call. */
 async function handleGetCursorPosition(): Promise<CallToolResult> {
   const response = await runInputHelper("cursor", {});
-  const x = response.x as number;
-  const y = response.y as number;
+  const { x, y } = CursorPositionResponseSchema.parse(response);
 
   return {
     content: [

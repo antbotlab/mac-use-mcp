@@ -1,10 +1,9 @@
-import { execFile } from "node:child_process";
 import { stat, unlink } from "node:fs/promises";
-import { promisify } from "node:util";
 import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
-const execFileAsync = promisify(execFile);
+import { zodToToolInputSchema } from "../helpers/schema.js";
+import { execFileAsync } from "../helpers/exec.js";
+import { PERMISSION_CHECK_TIMEOUT_MS } from "../constants.js";
 
 // -- Constants ---------------------------------------------------------------
 
@@ -30,6 +29,8 @@ const SCREEN_RECORDING_INSTRUCTIONS =
 
 // -- Schemas -----------------------------------------------------------------
 
+const CheckPermissionsInputSchema = z.object({});
+
 const WaitInputSchema = z.object({
   duration_ms: z
     .number()
@@ -47,10 +48,7 @@ export const utilityToolDefinitions: Tool[] = [
     name: "check_permissions",
     description:
       "Check whether macOS Accessibility and Screen Recording permissions are granted. Returns status for each permission and instructions for any that are missing.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {},
-    },
+    inputSchema: zodToToolInputSchema(CheckPermissionsInputSchema),
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
@@ -60,16 +58,7 @@ export const utilityToolDefinitions: Tool[] = [
     name: "wait",
     description:
       "Pause execution for a specified duration. Useful for waiting between UI operations.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        duration_ms: {
-          type: "number",
-          description: "Duration to wait in milliseconds (0–10000, default 500)",
-          default: WAIT_DEFAULT_MS,
-        },
-      },
-    },
+    inputSchema: zodToToolInputSchema(WaitInputSchema),
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
@@ -86,7 +75,7 @@ export const utilityToolDefinitions: Tool[] = [
 async function testAccessibility(): Promise<boolean> {
   try {
     await execFileAsync("osascript", ["-e", ACCESSIBILITY_TEST_SCRIPT], {
-      timeout: 5_000,
+      timeout: PERMISSION_CHECK_TIMEOUT_MS,
     });
     return true;
   } catch {
@@ -103,7 +92,7 @@ async function testScreenRecording(): Promise<boolean> {
     await execFileAsync(
       "screencapture",
       ["-x", SCREEN_RECORDING_TEST_PATH],
-      { timeout: 5_000 },
+      { timeout: PERMISSION_CHECK_TIMEOUT_MS },
     );
 
     const info = await stat(SCREEN_RECORDING_TEST_PATH);

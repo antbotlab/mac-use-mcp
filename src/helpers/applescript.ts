@@ -1,10 +1,17 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { execFileAsync } from "./exec.js";
+import { APPLESCRIPT_TIMEOUT_MS } from "../constants.js";
 
-const execFileAsync = promisify(execFile);
-
-/** Timeout for AppleScript execution (ms). */
-const COMMAND_TIMEOUT_MS = 15_000;
+/**
+ * Escape a string for safe interpolation inside AppleScript double-quoted literals.
+ *
+ * Escapes backslashes first, then double quotes (order matters).
+ *
+ * @param str - The raw string to escape.
+ * @returns The escaped string safe for use inside AppleScript `"..."`.
+ */
+export function escapeAppleScriptString(str: string): string {
+  return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
 
 /**
  * Execute an AppleScript expression and return its result.
@@ -19,7 +26,7 @@ const COMMAND_TIMEOUT_MS = 15_000;
 export async function runAppleScript(script: string): Promise<string> {
   try {
     const { stdout } = await execFileAsync("osascript", ["-e", script], {
-      timeout: COMMAND_TIMEOUT_MS,
+      timeout: APPLESCRIPT_TIMEOUT_MS,
     });
     return stdout.trim();
   } catch (error: unknown) {
@@ -32,7 +39,7 @@ export async function runAppleScript(script: string): Promise<string> {
 
     if (execError.killed || execError.signal === "SIGTERM") {
       throw new Error(
-        `AppleScript execution timed out after ${COMMAND_TIMEOUT_MS}ms`,
+        `AppleScript execution timed out after ${APPLESCRIPT_TIMEOUT_MS}ms`,
       );
     }
 

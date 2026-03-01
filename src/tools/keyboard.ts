@@ -1,13 +1,15 @@
 import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { runInputHelper } from "../helpers/input-helper.js";
+import { zodToToolInputSchema } from "../helpers/schema.js";
+import { clipboardRead, clipboardWrite } from "../helpers/clipboard.js";
+import { execFileAsync } from "../helpers/exec.js";
 import { enqueue } from "../queue.js";
-import { KEY_CODES, MODIFIER_FLAGS } from "../constants.js";
+import { KEY_CODES, APPLESCRIPT_TIMEOUT_MS } from "../constants.js";
 
 // -- Constants ---------------------------------------------------------------
 
-/** Modifier name aliases mapped to canonical MODIFIER_FLAGS keys. */
-const MODIFIER_ALIASES: Record<string, keyof typeof MODIFIER_FLAGS> = {
+/** Modifier name aliases mapped to canonical names. */
+const MODIFIER_ALIASES: Record<string, string> = {
   cmd: "command",
   command: "command",
   ctrl: "control",
@@ -43,16 +45,13 @@ const KEY_NAME_EXAMPLES = [
   "PageDown",
 ];
 
+/** Delay after paste before restoring clipboard (ms). */
+const PASTE_SETTLE_MS = 50;
+
 // -- Schemas -----------------------------------------------------------------
 
 const TypeTextInputSchema = z.object({
   text: z.string().min(1).describe("Text to type. Supports full Unicode including CJK and emoji."),
-  delay_ms: z
-    .number()
-    .int()
-    .min(0)
-    .optional()
-    .describe("Delay between keystrokes in milliseconds (default 0)."),
 });
 
 const PressKeyInputSchema = z.object({
@@ -70,77 +69,57 @@ export const keyboardToolDefinitions: Tool[] = [
   {
     name: "type_text",
     description:
-      "Type text at the current cursor position using CGEvent key synthesis. Supports full Unicode including CJK characters and emoji. If secure input is active (e.g. password fields), returns a note suggesting clipboard_write + press_key(\"cmd+v\") as an alternative.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        text: {
-          type: "string",
-          description:
-            "Text to type. Supports full Unicode including CJK and emoji.",
-        },
-        delay_ms: {
-          type: "number",
-          description:
-            "Delay between keystrokes in milliseconds (default 0).",
-        },
-      },
-      required: ["text"],
-    },
+      "Type text at the current cursor position using clipboard paste. Supports full Unicode including CJK characters and emoji. If secure input is active (e.g. password fields), returns a note suggesting clipboard_write + press_key(\"cmd+v\") as an alternative.",
+    inputSchema: zodToToolInputSchema(TypeTextInputSchema),
   },
   {
     name: "press_key",
     description:
-      'Simulate a key press with optional modifiers using CGEvent. Accepts a key combo string like "cmd+c", "ctrl+shift+F5", or "Return". Modifiers: cmd, ctrl, shift, opt/alt.',
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        key: {
-          type: "string",
-          description:
-            'Key combo string. Examples: "Return", "cmd+c", "ctrl+shift+F5", "alt+Tab".',
-        },
-      },
-      required: ["key"],
-    },
+      'Simulate a key press with optional modifiers. Accepts a key combo string like "cmd+c", "ctrl+shift+F5", or "Return". Modifiers: cmd, ctrl, shift, opt/alt.',
+    inputSchema: zodToToolInputSchema(PressKeyInputSchema),
   },
 ];
 
 // -- Handlers ----------------------------------------------------------------
 
-/** Handle type_text tool call. */
+/**
+ * Handle type_text tool call.
+ *
+ * Uses clipboard paste (save → write → Cmd+V → restore) instead of CGEvent
+ * key synthesis, which is silently blocked on macOS 26+.
+ */
 async function handleTypeText(
   args: Record<string, unknown>,
 ): Promise<CallToolResult> {
   const parsed = TypeTextInputSchema.parse(args);
 
-  // Check if secure input is active before typing
-  const secureStatus = await runInputHelper("secure", {});
-  const secureActive = secureStatus.secure === true;
-
-  if (secureActive) {
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: false,
-              secureInputActive: true,
-              note: "Secure input is active (e.g. a password field is focused). CGEvent-based typing is blocked. Use clipboard_write to place text on the clipboard, then press_key(\"cmd+v\") to paste instead.",
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
+  // Save current clipboard contents (best-effort)
+  let oldClipboard = "";
+  try {
+    oldClipboard = await clipboardRead();
+  } catch {
+    // Clipboard may be empty or contain non-text data
   }
 
-  await runInputHelper("type", {
-    text: parsed.text,
-    delay: parsed.delay_ms ?? 0,
-  });
+  // Write target text to clipboard
+  await clipboardWrite(parsed.text);
+
+  // Paste via AppleScript Cmd+V
+  await execFileAsync(
+    "osascript",
+    ["-e", 'tell application "System Events" to key code 9 using command down'],
+    { timeout: APPLESCRIPT_TIMEOUT_MS },
+  );
+
+  // Brief delay for paste to settle before restoring clipboard
+  await new Promise((resolve) => setTimeout(resolve, PASTE_SETTLE_MS));
+
+  // Restore previous clipboard contents (best-effort)
+  try {
+    await clipboardWrite(oldClipboard);
+  } catch {
+    // Best-effort restore
+  }
 
   return {
     content: [
@@ -155,7 +134,12 @@ async function handleTypeText(
   };
 }
 
-/** Handle press_key tool call. */
+/**
+ * Handle press_key tool call.
+ *
+ * Uses AppleScript `key code` via System Events instead of CGEvent,
+ * which is silently blocked for keyboard events on macOS 26+.
+ */
 async function handlePressKey(
   args: Record<string, unknown>,
 ): Promise<CallToolResult> {
@@ -179,8 +163,8 @@ async function handlePressKey(
     };
   }
 
-  // Build combined modifier flags
-  let modifiers = 0;
+  // Build AppleScript modifier clause
+  const asModifiers: string[] = [];
   for (const mod of modifierNames) {
     const canonical = MODIFIER_ALIASES[mod.toLowerCase()];
     if (canonical === undefined) {
@@ -194,10 +178,18 @@ async function handlePressKey(
         ],
       };
     }
-    modifiers |= MODIFIER_FLAGS[canonical];
+    asModifiers.push(`${canonical} down`);
   }
 
-  await runInputHelper("key", { code, modifiers });
+  // Build and execute AppleScript
+  const script =
+    asModifiers.length > 0
+      ? `tell application "System Events" to key code ${code} using {${asModifiers.join(", ")}}`
+      : `tell application "System Events" to key code ${code}`;
+
+  await execFileAsync("osascript", ["-e", script], {
+    timeout: APPLESCRIPT_TIMEOUT_MS,
+  });
 
   return {
     content: [

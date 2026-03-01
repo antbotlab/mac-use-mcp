@@ -1,8 +1,12 @@
 import { z } from "zod";
 import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { zodToToolInputSchema } from "../helpers/schema.js";
 import { clipboardRead, clipboardWrite } from "../helpers/clipboard.js";
+import { enqueue } from "../queue.js";
 
 // -- Schemas -----------------------------------------------------------------
+
+const ClipboardReadInputSchema = z.object({});
 
 const ClipboardWriteInputSchema = z.object({
   text: z.string().describe("Text to write to the clipboard."),
@@ -15,10 +19,7 @@ export const clipboardToolDefinitions: Tool[] = [
     name: "clipboard_read",
     description:
       "Read the current contents of the macOS clipboard as plain text.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {},
-    },
+    inputSchema: zodToToolInputSchema(ClipboardReadInputSchema),
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
@@ -27,16 +28,7 @@ export const clipboardToolDefinitions: Tool[] = [
   {
     name: "clipboard_write",
     description: "Write text to the macOS clipboard.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        text: {
-          type: "string",
-          description: "Text to write to the clipboard.",
-        },
-      },
-      required: ["text"],
-    },
+    inputSchema: zodToToolInputSchema(ClipboardWriteInputSchema),
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
@@ -82,11 +74,11 @@ async function handleClipboardWrite(
 
 // -- Dispatcher --------------------------------------------------------------
 
-/** Map of clipboard tool names to their handler functions. */
+/** Map of clipboard tool names to their handler functions (queued). */
 export const clipboardToolHandlers: Record<
   string,
   (args: Record<string, unknown>) => Promise<CallToolResult>
 > = {
-  clipboard_read: () => handleClipboardRead(),
-  clipboard_write: handleClipboardWrite,
+  clipboard_read: () => enqueue(() => handleClipboardRead()),
+  clipboard_write: (args) => enqueue(() => handleClipboardWrite(args)),
 };

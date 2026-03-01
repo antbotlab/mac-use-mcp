@@ -26,11 +26,16 @@ func fail(_ message: String) -> Never {
 // MARK: - Modifier Helpers
 
 /// Map of human-readable modifier names to CGEventFlags raw values.
+/// Accepts both short ("cmd") and full ("command") names for robustness.
 private let modifierFlagMap: [String: UInt64] = [
-    "cmd":   0x100000,
-    "shift": 0x020000,
-    "ctrl":  0x040000,
-    "opt":   0x080000,
+    "cmd":     0x100000,
+    "command": 0x100000,
+    "shift":   0x020000,
+    "ctrl":    0x040000,
+    "control": 0x040000,
+    "opt":     0x080000,
+    "option":  0x080000,
+    "alt":     0x080000,
 ]
 
 /// Apply string-based modifier names to a CGEvent.
@@ -170,6 +175,67 @@ func handleCursor() {
     ])
 }
 
+// MARK: - Keyboard Helpers
+
+/// Translate a virtual key code to Unicode character(s) using the current keyboard layout.
+///
+/// Returns nil for non-printable keys (Return, Tab, Escape, arrow keys, etc.).
+private func translateKeyCode(_ keyCode: UInt16, modifierFlags: CGEventFlags) -> String? {
+    guard let inputSource = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+          let rawLayoutData = TISGetInputSourceProperty(inputSource, kTISPropertyUnicodeKeyLayoutData) else {
+        return nil
+    }
+
+    let layoutData = unsafeBitCast(rawLayoutData, to: CFData.self)
+    let keyLayoutPtr = unsafeBitCast(
+        CFDataGetBytePtr(layoutData),
+        to: UnsafePointer<UCKeyboardLayout>.self
+    )
+
+    // Convert CGEventFlags to Carbon modifier key state
+    var modifierKeyState: UInt32 = 0
+    let rawFlags = modifierFlags.rawValue
+    if rawFlags & CGEventFlags.maskShift.rawValue != 0 {
+        modifierKeyState |= UInt32(shiftKey >> 8) & 0xFF
+    }
+    if rawFlags & CGEventFlags.maskCommand.rawValue != 0 {
+        modifierKeyState |= UInt32(cmdKey >> 8) & 0xFF
+    }
+    if rawFlags & CGEventFlags.maskAlternate.rawValue != 0 {
+        modifierKeyState |= UInt32(optionKey >> 8) & 0xFF
+    }
+    if rawFlags & CGEventFlags.maskControl.rawValue != 0 {
+        modifierKeyState |= UInt32(controlKey >> 8) & 0xFF
+    }
+
+    var deadKeyState: UInt32 = 0
+    let maxChars = 4
+    var length = 0
+    var chars = [UniChar](repeating: 0, count: maxChars)
+
+    let status = UCKeyTranslate(
+        keyLayoutPtr,
+        keyCode,
+        UInt16(kUCKeyActionDown),
+        modifierKeyState,
+        UInt32(LMGetKbdType()),
+        UInt32(kUCKeyTranslateNoDeadKeysBit),
+        &deadKeyState,
+        maxChars,
+        &length,
+        &chars
+    )
+
+    guard status == noErr, length > 0 else { return nil }
+
+    let result = String(utf16CodeUnits: chars, count: length)
+    // Skip control characters (Return=\r, Tab=\t, Escape=\u{1b}, etc.)
+    if result.unicodeScalars.allSatisfy({ $0.value < 32 }) {
+        return nil
+    }
+    return result
+}
+
 // MARK: - Keyboard Command Handlers
 
 /// Maximum number of UTF-16 code units per chunk for keyboardSetUnicodeString.
@@ -224,6 +290,8 @@ func handleType(_ args: [String: Any]) {
 /// Handle the "key" command.
 ///
 /// Synthesizes a single key press with optional modifier flags.
+/// Populates Unicode character data via UCKeyTranslate so that apps
+/// relying on character data (e.g. Calculator) receive the correct input.
 ///
 /// Args: {"code":Int, "modifiers":["cmd","shift","ctrl","opt"]}
 ///   - code:      Virtual key code (e.g. 0 = 'a', 36 = Return).
@@ -242,6 +310,13 @@ func handleKey(_ args: [String: Any]) {
 
     applyModifiers(keyDown, modifiers)
     applyModifiers(keyUp, modifiers)
+
+    // Populate Unicode character data for apps that rely on it (e.g. Calculator)
+    if let character = translateKeyCode(UInt16(code), modifierFlags: keyDown.flags) {
+        var utf16 = Array(character.utf16)
+        keyDown.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
+        keyUp.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
+    }
 
     keyDown.post(tap: .cghidEventTap)
     keyUp.post(tap: .cghidEventTap)
@@ -385,10 +460,13 @@ func handleSecure() {
 ///
 /// Args: {} (none required)
 /// Returns: {"success":true, "displays":[{name, width, height, x, y, scaleFactor}]}
+/// Maximum number of displays to query from CGGetActiveDisplayList.
+private let maxDisplayCount: UInt32 = 32
+
 func handleDisplayInfo() {
-    var displayIDs = [CGDirectDisplayID](repeating: 0, count: 32)
+    var displayIDs = [CGDirectDisplayID](repeating: 0, count: Int(maxDisplayCount))
     var displayCount: UInt32 = 0
-    CGGetActiveDisplayList(32, &displayIDs, &displayCount)
+    CGGetActiveDisplayList(maxDisplayCount, &displayIDs, &displayCount)
 
     var displays: [[String: Any]] = []
     for i in 0..<Int(displayCount) {
@@ -412,6 +490,70 @@ func handleDisplayInfo() {
     }
 
     outputJSON(["success": true, "displays": displays])
+}
+
+// MARK: - Window Enumeration Handler
+
+/// Handle the "list_windows" command.
+///
+/// Uses CGWindowListCopyWindowInfo for robust window enumeration.
+/// Returns real CGWindowIDs that work with screencapture -l.
+///
+/// Args: {"app":"optional filter"}
+/// Returns: {"success":true, "windows":[{app, title, id, x, y, width, height, minimized}]}
+func handleListWindows(_ args: [String: Any]) {
+    let filterApp = args["app"] as? String
+
+    guard let windowList = CGWindowListCopyWindowInfo(
+        [.optionAll, .excludeDesktopElements],
+        kCGNullWindowID
+    ) as? [[String: Any]] else {
+        outputJSON(["success": true, "windows": []])
+        return
+    }
+
+    var windows: [[String: Any]] = []
+
+    for window in windowList {
+        guard let ownerName = window[kCGWindowOwnerName as String] as? String,
+              let windowNumber = window[kCGWindowNumber as String] as? Int,
+              let bounds = window[kCGWindowBounds as String] as? [String: Any] else {
+            continue
+        }
+
+        // Only include normal windows (layer 0)
+        let layer = window[kCGWindowLayer as String] as? Int ?? -1
+        if layer != 0 { continue }
+
+        guard let x = bounds["X"] as? Double,
+              let y = bounds["Y"] as? Double,
+              let width = bounds["Width"] as? Double,
+              let height = bounds["Height"] as? Double else {
+            continue
+        }
+
+        // Skip tiny/invisible windows
+        if width < 1 || height < 1 { continue }
+
+        // Apply app filter
+        if let filter = filterApp, ownerName != filter { continue }
+
+        let title = window[kCGWindowName as String] as? String ?? ""
+        let isOnscreen = window[kCGWindowIsOnscreen as String] as? Bool ?? false
+
+        windows.append([
+            "app": ownerName,
+            "title": title,
+            "id": windowNumber,
+            "x": Int(x),
+            "y": Int(y),
+            "width": Int(width),
+            "height": Int(height),
+            "minimized": !isOnscreen,
+        ])
+    }
+
+    outputJSON(["success": true, "windows": windows])
 }
 
 // MARK: - Main Entry Point
@@ -452,6 +594,8 @@ case "secure":
     handleSecure()
 case "display_info":
     handleDisplayInfo()
+case "list_windows":
+    handleListWindows(args)
 default:
     fail("unknown command: \(command)")
 }
