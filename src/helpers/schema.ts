@@ -1,16 +1,14 @@
-import type { ZodObject, ZodRawShape } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from "zod";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
 /**
  * Convert a Zod object schema to a JSON Schema compatible with the MCP Tool
  * inputSchema type.
  *
- * zodToJsonSchema returns a broad union type, but z.object() always produces
- * `{ type: "object", ... }` at runtime. This helper narrows the type.
+ * Uses zod 4's native toJSONSchema with draft-07 target for MCP compatibility.
  */
 export function zodToToolInputSchema(
-  schema: ZodObject<ZodRawShape>,
+  schema: z.ZodObject<z.ZodRawShape>,
 ): Tool["inputSchema"] {
-  return zodToJsonSchema(schema) as Tool["inputSchema"];
+  return z.toJSONSchema(schema, { target: "draft-07" }) as Tool["inputSchema"];
 }
