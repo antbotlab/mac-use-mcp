@@ -1,7 +1,7 @@
 {
   "name": "mac-use-mcp",
   "version": "0.2.0",
-  "description": "Zero-dependency macOS desktop automation via MCP",
+  "description": "Zero-native-dependency macOS desktop automation via MCP",
   "license": "MIT",
   "author": "antbotlab",
   "type": "module",
