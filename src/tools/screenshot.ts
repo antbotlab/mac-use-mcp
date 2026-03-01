@@ -32,18 +32,16 @@ const ScreenshotBaseSchema = z.object({
   x: z
     .number()
     .int()
-    .min(0)
     .optional()
     .describe(
-      "Left edge x-coordinate in screen pixels (required when mode is region)",
+      "Left edge x-coordinate in screen pixels (may be negative for secondary displays; required when mode is region)",
     ),
   y: z
     .number()
     .int()
-    .min(0)
     .optional()
     .describe(
-      "Top edge y-coordinate in screen pixels (required when mode is region)",
+      "Top edge y-coordinate in screen pixels (may be negative for secondary displays; required when mode is region)",
     ),
   width: z
     .number()
