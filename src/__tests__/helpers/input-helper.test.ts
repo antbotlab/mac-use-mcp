@@ -17,10 +17,16 @@ import { runInputHelper } from "../../helpers/input-helper.js";
 const mockExecFileAsync = vi.mocked(execFileAsync);
 const mockAccess = vi.mocked(access);
 
-/** Create an exec-style error with stderr, code, killed, signal fields. */
+/** Create an exec-style error with stdout, stderr, code, killed, signal fields. */
 function makeExecError(
   message: string,
-  fields: { stderr?: string; code?: number; killed?: boolean; signal?: string },
+  fields: {
+    stdout?: string;
+    stderr?: string;
+    code?: number;
+    killed?: boolean;
+    signal?: string;
+  },
 ): Error {
   return Object.assign(new Error(message), fields) as Error;
 }
@@ -104,5 +110,49 @@ describe("runInputHelper", () => {
     );
 
     await expect(runInputHelper("click", {})).rejects.toThrow(/exit code 42/);
+  });
+
+  // -- Tests for stdout JSON error propagation (Step 5) ----------------------
+
+  it("propagates error message from stdout JSON on non-zero exit", async () => {
+    mockExecFileAsync.mockRejectedValue(
+      makeExecError("Command failed", {
+        stdout: '{"success":false,"error":"no window found matching \'foo\'"}',
+        stderr: "",
+        code: 1,
+      }),
+    );
+
+    await expect(runInputHelper("screenshot", {})).rejects.toThrow(
+      "no window found matching 'foo'",
+    );
+  });
+
+  it("falls back to exit code when stdout is not valid JSON", async () => {
+    mockExecFileAsync.mockRejectedValue(
+      makeExecError("Command failed", {
+        stdout: "not json",
+        stderr: "",
+        code: 1,
+      }),
+    );
+
+    await expect(runInputHelper("screenshot", {})).rejects.toThrow(
+      "Input helper failed with exit code 1",
+    );
+  });
+
+  it("prefers stdout JSON error over stderr", async () => {
+    mockExecFileAsync.mockRejectedValue(
+      makeExecError("Command failed", {
+        stdout: '{"success":false,"error":"specific swift error"}',
+        stderr: "generic stderr noise",
+        code: 1,
+      }),
+    );
+
+    await expect(runInputHelper("screenshot", {})).rejects.toThrow(
+      "specific swift error",
+    );
   });
 });

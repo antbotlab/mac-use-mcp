@@ -55,6 +55,22 @@ func applyModifiers(_ event: CGEvent, _ modifiers: [String]) {
     event.flags = CGEventFlags(rawValue: rawFlags)
 }
 
+// MARK: - Bounds Check Helper
+
+/// Check whether a point falls within the union bounding rect of all active displays.
+///
+/// Returns a warning string if the point is outside the combined screen area,
+/// or nil if within bounds. Note: for non-contiguous multi-monitor layouts,
+/// points in gaps between displays may not trigger a warning.
+func offScreenWarning(x: CGFloat, y: CGFloat) -> String? {
+    let bounds = logicalScreenBounds()
+    let point = CGPoint(x: x, y: y)
+    if bounds.contains(point) {
+        return nil
+    }
+    return "Coordinates (\(Int(x)), \(Int(y))) are outside all screen bounds (\(Int(bounds.origin.x)), \(Int(bounds.origin.y))) size \(Int(bounds.size.width))x\(Int(bounds.size.height))"
+}
+
 // MARK: - Pointer Command Handlers
 
 /// Inter-event delay (microseconds) between click pairs so macOS recognizes
@@ -144,7 +160,11 @@ func handleClick(_ args: [String: Any]) {
         }
     }
 
-    outputJSON(["success": true])
+    var result: [String: Any] = ["success": true]
+    if let warning = offScreenWarning(x: x, y: y) {
+        result["warning"] = warning
+    }
+    outputJSON(result)
 }
 
 /// Handle the "move" command.
@@ -166,7 +186,12 @@ func handleMove(_ args: [String: Any]) {
     }
 
     event.post(tap: .cghidEventTap)
-    outputJSON(["success": true])
+
+    var result: [String: Any] = ["success": true]
+    if let warning = offScreenWarning(x: x, y: y) {
+        result["warning"] = warning
+    }
+    outputJSON(result)
 }
 
 /// Handle the "cursor" command.
@@ -375,7 +400,11 @@ func handleScroll(_ args: [String: Any]) {
     }
     scrollEvent.post(tap: .cghidEventTap)
 
-    outputJSON(["success": true])
+    var result: [String: Any] = ["success": true]
+    if let warning = offScreenWarning(x: x, y: y) {
+        result["warning"] = warning
+    }
+    outputJSON(result)
 }
 
 // MARK: - Drag Command Handler
@@ -446,7 +475,15 @@ func handleDrag(_ args: [String: Any]) {
     }
     upEvent.post(tap: .cghidEventTap)
 
-    outputJSON(["success": true])
+    var result: [String: Any] = ["success": true]
+    // Check both start and end points
+    var warnings: [String] = []
+    if let w = offScreenWarning(x: sx, y: sy) { warnings.append("start: \(w)") }
+    if let w = offScreenWarning(x: ex, y: ey) { warnings.append("end: \(w)") }
+    if !warnings.isEmpty {
+        result["warning"] = warnings.joined(separator: "; ")
+    }
+    outputJSON(result)
 }
 
 // MARK: - Secure Input Status Handler
@@ -543,13 +580,17 @@ func handleListWindows(_ args: [String: Any]) {
             continue
         }
 
-        // Skip tiny/invisible windows
-        if width < 1 || height < 1 { continue }
+        // Skip tiny/invisible windows (below 10×10 are system artifacts)
+        if width < 10 || height < 10 { continue }
 
         // Apply app filter
         if let filter = filterApp, ownerName != filter { continue }
 
         let title = window[kCGWindowName as String] as? String ?? ""
+
+        // When no app filter: skip empty-title windows (system services)
+        if filterApp == nil && title.isEmpty { continue }
+
         let isOnscreen = window[kCGWindowIsOnscreen as String] as? Bool ?? false
 
         windows.append([
