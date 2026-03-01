@@ -108,8 +108,8 @@ export const MODIFIER_FLAGS = {
   control: 0x040000,
 } as const;
 
-/** Default maximum dimension (width or height) for screenshot resizing. */
-export const DEFAULT_MAX_DIMENSION = 1024;
+/** Default maximum dimension (width or height) for screenshot resizing. 0 = no resize. */
+export const DEFAULT_MAX_DIMENSION = 0;
 
 // -- Timeouts ----------------------------------------------------------------
 

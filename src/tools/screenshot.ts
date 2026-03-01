@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { captureScreen } from "../helpers/screencapture.js";
-import { runInputHelper } from "../helpers/input-helper.js";
 import { zodToToolInputSchema } from "../helpers/schema.js";
 import { DEFAULT_MAX_DIMENSION } from "../constants.js";
 import { enqueue } from "../queue.js";
@@ -8,21 +7,11 @@ import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // -- Constants ---------------------------------------------------------------
 
-/** Minimum allowed value for max_dimension. */
+/** Minimum allowed value for max_dimension (when non-zero). */
 const MIN_MAX_DIMENSION = 256;
 
 /** Maximum allowed value for max_dimension. */
 const MAX_MAX_DIMENSION = 4096;
-
-// -- Response schemas (validate Swift helper output) -------------------------
-
-const DisplayScaleResponseSchema = z.object({
-  displays: z.array(
-    z.object({
-      scaleFactor: z.number(),
-    }),
-  ),
-});
 
 /** Permission setup instructions shown when screenshot capture fails. */
 const PERMISSION_INSTRUCTIONS =
@@ -76,11 +65,14 @@ const ScreenshotBaseSchema = z.object({
   max_dimension: z
     .number()
     .int()
-    .min(MIN_MAX_DIMENSION)
+    .min(0)
     .max(MAX_MAX_DIMENSION)
     .default(DEFAULT_MAX_DIMENSION)
+    .refine((v) => v === 0 || v >= MIN_MAX_DIMENSION, {
+      message: `max_dimension must be 0 (no resize) or between ${MIN_MAX_DIMENSION} and ${MAX_MAX_DIMENSION}`,
+    })
     .describe(
-      `Maximum width or height of the returned image (${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}, default ${DEFAULT_MAX_DIMENSION})`,
+      `Maximum width or height of the returned image. 0 means no resize (default). When set, must be ${MIN_MAX_DIMENSION}–${MAX_MAX_DIMENSION}.`,
     ),
   format: z
     .enum(["png", "jpeg"])
@@ -136,11 +128,6 @@ async function handleScreenshot(
   const parsed = ScreenshotInputSchema.parse(args);
 
   try {
-    // Get display scale factor for logical dimension computation
-    const displayResponse = await runInputHelper("display_info", {});
-    const { displays } = DisplayScaleResponseSchema.parse(displayResponse);
-    const scaleFactor = displays.length > 0 ? displays[0].scaleFactor : 1;
-
     const result = await captureScreen({
       mode: parsed.mode,
       region:
@@ -150,10 +137,20 @@ async function handleScreenshot(
       windowTitle: parsed.mode === "window" ? parsed.window_title : undefined,
       maxDimension: parsed.max_dimension,
       format: parsed.format,
-      displayScaleFactor: scaleFactor,
     });
 
     const mimeType = parsed.format === "jpeg" ? "image/jpeg" : "image/png";
+
+    // Build coordinate mapping hint for agents
+    const isIdentity =
+      result.scaleX === 1 &&
+      result.scaleY === 1 &&
+      result.originX === 0 &&
+      result.originY === 0;
+
+    const coordinateHint = isIdentity
+      ? "Coordinate mapping: screen = image pixel (1:1, no conversion needed)"
+      : `Coordinate mapping: screen_x = ${result.originX} + image_x * ${result.scaleX}, screen_y = ${result.originY} + image_y * ${result.scaleY}`;
 
     return {
       content: [
@@ -164,12 +161,7 @@ async function handleScreenshot(
         },
         {
           type: "text" as const,
-          text: [
-            `Image dimensions: ${result.width}x${result.height} (pixels)`,
-            `Scale: ${result.scaleInfo}`,
-            "Note: to convert image pixel positions to screen coordinates, " +
-              `multiply by (screen_dimension / image_dimension). Screen is ${result.screenWidth}x${result.screenHeight}.`,
-          ].join("\n"),
+          text: `Image: ${result.width}x${result.height}\n${coordinateHint}`,
         },
       ],
     };

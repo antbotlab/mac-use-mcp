@@ -1,6 +1,7 @@
 import Carbon
 import CoreGraphics
 import Foundation
+import ImageIO
 
 // MARK: - Output Helpers
 
@@ -556,6 +557,259 @@ func handleListWindows(_ args: [String: Any]) {
     outputJSON(["success": true, "windows": windows])
 }
 
+// MARK: - Screenshot Helpers
+
+/// Resize a CGImage to the given dimensions using high-quality interpolation.
+///
+/// Returns the original image unchanged if newWidth/newHeight match the input.
+func resizeImage(_ image: CGImage, newWidth: Int, newHeight: Int) -> CGImage {
+    if image.width == newWidth && image.height == newHeight {
+        return image
+    }
+
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue
+        | CGBitmapInfo.byteOrder32Little.rawValue
+
+    guard let context = CGContext(
+        data: nil,
+        width: newWidth,
+        height: newHeight,
+        bitsPerComponent: 8,
+        bytesPerRow: 0,
+        space: colorSpace,
+        bitmapInfo: bitmapInfo
+    ) else {
+        fail("screenshot: failed to create resize context")
+    }
+
+    context.interpolationQuality = .high
+    context.draw(image, in: CGRect(x: 0, y: 0, width: newWidth, height: newHeight))
+
+    guard let resized = context.makeImage() else {
+        fail("screenshot: failed to create resized image")
+    }
+    return resized
+}
+
+/// Compute the logical bounding box of all active displays.
+///
+/// Returns the union of all display bounds in logical points — the same
+/// coordinate system as CGEvent and CGWindowListCopyWindowInfo.
+func logicalScreenBounds() -> CGRect {
+    var displayIDs = [CGDirectDisplayID](repeating: 0, count: Int(maxDisplayCount))
+    var count: UInt32 = 0
+    CGGetActiveDisplayList(maxDisplayCount, &displayIDs, &count)
+
+    var union = CGRect.null
+    for i in 0..<Int(count) {
+        union = union.union(CGDisplayBounds(displayIDs[i]))
+    }
+    return union
+}
+
+/// Encode a CGImage to PNG or JPEG data using ImageIO.
+func encodeImage(_ image: CGImage, format: String) -> Data {
+    let uti: CFString = format == "jpeg"
+        ? "public.jpeg" as CFString
+        : "public.png" as CFString
+    let imageData = NSMutableData()
+
+    guard let destination = CGImageDestinationCreateWithData(
+        imageData, uti, 1, nil
+    ) else {
+        fail("screenshot: failed to create image destination")
+    }
+
+    CGImageDestinationAddImage(destination, image, nil)
+
+    guard CGImageDestinationFinalize(destination) else {
+        fail("screenshot: failed to finalize image encoding")
+    }
+
+    return imageData as Data
+}
+
+// MARK: - Screenshot Command Handler
+
+/// Handle the "screenshot" command.
+///
+/// Captures a screenshot using CGWindowListCreateImage and normalizes the
+/// output to logical pixels (matching screen coordinates). On macOS versions
+/// where CGWindowListCreateImage returns Retina (2x) pixels, the image is
+/// downscaled to logical resolution automatically.
+///
+/// Args: {"mode":"full"|"region"|"window", "x":Int, "y":Int, "w":Int, "h":Int,
+///        "window_title":"...", "max_dimension":0, "format":"png"|"jpeg"}
+func handleScreenshot(_ args: [String: Any]) {
+    let mode = args["mode"] as? String ?? "full"
+    let maxDimension = args["max_dimension"] as? Int ?? 0
+    let format = args["format"] as? String ?? "png"
+
+    var capturedImage: CGImage?
+    var originX: CGFloat = 0
+    var originY: CGFloat = 0
+    // Expected logical size — used to detect and correct Retina captures
+    var expectedLogicalWidth: CGFloat = 0
+    var expectedLogicalHeight: CGFloat = 0
+
+    switch mode {
+    case "full":
+        capturedImage = CGWindowListCreateImage(
+            .infinite,
+            .optionOnScreenOnly,
+            kCGNullWindowID,
+            []
+        )
+        let screenBounds = logicalScreenBounds()
+        expectedLogicalWidth = screenBounds.size.width
+        expectedLogicalHeight = screenBounds.size.height
+
+    case "region":
+        let rx = requireCGFloat(args, key: "x", command: "screenshot")
+        let ry = requireCGFloat(args, key: "y", command: "screenshot")
+        let rw = requireCGFloat(args, key: "w", command: "screenshot")
+        let rh = requireCGFloat(args, key: "h", command: "screenshot")
+        let rect = CGRect(x: rx, y: ry, width: rw, height: rh)
+        originX = rx
+        originY = ry
+        expectedLogicalWidth = rw
+        expectedLogicalHeight = rh
+        capturedImage = CGWindowListCreateImage(
+            rect,
+            .optionOnScreenOnly,
+            kCGNullWindowID,
+            []
+        )
+
+    case "window":
+        guard let windowTitle = args["window_title"] as? String,
+              !windowTitle.isEmpty else {
+            fail("screenshot: missing required 'window_title' for window mode")
+        }
+
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionAll, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
+            fail("screenshot: failed to enumerate windows")
+        }
+
+        let titleLower = windowTitle.lowercased()
+        var foundWindowID: CGWindowID?
+        var foundBounds: CGRect?
+
+        for window in windowList {
+            guard let ownerName = window[kCGWindowOwnerName as String] as? String,
+                  let windowNumber = window[kCGWindowNumber as String] as? Int,
+                  let bounds = window[kCGWindowBounds as String] as? [String: Any]
+            else {
+                continue
+            }
+
+            let layer = window[kCGWindowLayer as String] as? Int ?? -1
+            if layer != 0 { continue }
+
+            let title = window[kCGWindowName as String] as? String ?? ""
+
+            // Case-insensitive substring match on title or owner name
+            if title.lowercased().contains(titleLower)
+                || ownerName.lowercased().contains(titleLower)
+            {
+                guard let bx = bounds["X"] as? Double,
+                      let by = bounds["Y"] as? Double,
+                      let bw = bounds["Width"] as? Double,
+                      let bh = bounds["Height"] as? Double else {
+                    continue
+                }
+                if bw < 1 || bh < 1 { continue }
+
+                foundWindowID = CGWindowID(windowNumber)
+                foundBounds = CGRect(x: bx, y: by, width: bw, height: bh)
+                break
+            }
+        }
+
+        guard let windowID = foundWindowID, let windowBounds = foundBounds else {
+            fail("screenshot: no window found matching '\(windowTitle)'")
+        }
+
+        originX = windowBounds.origin.x
+        originY = windowBounds.origin.y
+        expectedLogicalWidth = windowBounds.size.width
+        expectedLogicalHeight = windowBounds.size.height
+
+        capturedImage = CGWindowListCreateImage(
+            .null,
+            .optionIncludingWindow,
+            windowID,
+            []
+        )
+
+    default:
+        fail("screenshot: unknown mode '\(mode)' — expected full, region, or window")
+    }
+
+    guard let rawImage = capturedImage else {
+        fail("screenshot: CGWindowListCreateImage returned nil — Screen Recording permission may be required")
+    }
+
+    // Normalize to logical pixels. On some macOS versions (15+),
+    // CGWindowListCreateImage returns Retina-resolution images even without
+    // .bestResolution. Detect this by comparing captured size to expected
+    // logical size, and downscale if needed.
+    var logicalImage = rawImage
+    let logicalW = Int(expectedLogicalWidth)
+    let logicalH = Int(expectedLogicalHeight)
+
+    if logicalW > 0 && logicalH > 0
+        && (rawImage.width > logicalW || rawImage.height > logicalH)
+    {
+        logicalImage = resizeImage(rawImage, newWidth: logicalW, newHeight: logicalH)
+    }
+
+    // The "logical size" is what we use for coordinate math from here on
+    let logicalWidth = logicalImage.width
+    let logicalHeight = logicalImage.height
+
+    // Apply max_dimension resize on top of the logical image
+    var outputImage = logicalImage
+    if maxDimension > 0 && max(logicalWidth, logicalHeight) > maxDimension {
+        let scale = CGFloat(maxDimension) / CGFloat(max(logicalWidth, logicalHeight))
+        let newWidth = Int(CGFloat(logicalWidth) * scale)
+        let newHeight = Int(CGFloat(logicalHeight) * scale)
+        outputImage = resizeImage(logicalImage, newWidth: newWidth, newHeight: newHeight)
+    }
+
+    let outputWidth = outputImage.width
+    let outputHeight = outputImage.height
+
+    // Encode to PNG or JPEG
+    let encoded = encodeImage(outputImage, format: format)
+    let base64 = encoded.base64EncodedString()
+
+    // Compute scale factors for coordinate mapping.
+    // scale converts image pixels to logical screen offsets:
+    //   screen_x = origin_x + image_x * scale_x
+    var scaleX: Double = 1.0
+    var scaleY: Double = 1.0
+    if logicalWidth != outputWidth || logicalHeight != outputHeight {
+        scaleX = Double(logicalWidth) / Double(outputWidth)
+        scaleY = Double(logicalHeight) / Double(outputHeight)
+    }
+
+    outputJSON([
+        "success": true,
+        "base64": base64,
+        "width": outputWidth,
+        "height": outputHeight,
+        "origin_x": Double(originX),
+        "origin_y": Double(originY),
+        "scale_x": scaleX,
+        "scale_y": scaleY,
+    ])
+}
+
 // MARK: - Main Entry Point
 
 let arguments = CommandLine.arguments
@@ -596,6 +850,8 @@ case "display_info":
     handleDisplayInfo()
 case "list_windows":
     handleListWindows(args)
+case "screenshot":
+    handleScreenshot(args)
 default:
     fail("unknown command: \(command)")
 }
