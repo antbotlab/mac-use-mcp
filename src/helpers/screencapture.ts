@@ -1,5 +1,6 @@
 import { readFile, unlink } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
+import { z } from "zod";
 import { DEFAULT_MAX_DIMENSION } from "../constants.js";
 import { runInputHelper } from "./input-helper.js";
 
@@ -52,18 +53,18 @@ export interface ScreenshotResult {
   scaleY: number;
 }
 
-/** Schema shape for the Swift input-helper screenshot response. */
-interface SwiftScreenshotResponse {
-  success: boolean;
-  base64?: string;
-  width: number;
-  height: number;
-  origin_x: number;
-  origin_y: number;
-  scale_x: number;
-  scale_y: number;
-  error?: string;
-}
+/** Zod schema for validating the Swift input-helper screenshot response. */
+const SwiftScreenshotResponseSchema = z.object({
+  success: z.boolean(),
+  base64: z.string().optional(),
+  width: z.number(),
+  height: z.number(),
+  origin_x: z.number(),
+  origin_y: z.number(),
+  scale_x: z.number(),
+  scale_y: z.number(),
+  error: z.string().optional(),
+});
 
 /**
  * Capture a screenshot via the built-in Swift input-helper.
@@ -119,10 +120,9 @@ async function captureViaInputHelper(
   }
 
   try {
-    const response = (await runInputHelper(
-      "screenshot",
-      helperArgs,
-    )) as unknown as SwiftScreenshotResponse;
+    const response = SwiftScreenshotResponseSchema.parse(
+      await runInputHelper("screenshot", helperArgs),
+    );
 
     if (!response.success) {
       throw new Error(response.error ?? "Screenshot capture failed");
