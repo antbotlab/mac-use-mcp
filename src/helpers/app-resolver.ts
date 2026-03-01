@@ -48,7 +48,10 @@ async function getRunningProcessNames(): Promise<string[]> {
  *
  * @returns The matched process name, or `null` if no match is found.
  */
-function matchProcessName(query: string, names: string[]): string | null {
+export function matchProcessName(
+  query: string,
+  names: string[],
+): string | null {
   const q = query.toLowerCase();
 
   // Exact match (case-insensitive)
