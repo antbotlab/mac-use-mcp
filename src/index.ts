@@ -140,6 +140,56 @@ async function main(): Promise<void> {
   await server.connect(transport);
 }
 
+// -- CLI checks (before server startup) --------------------------------------
+
+const [major] = process.versions.node.split(".").map(Number);
+if (major < 22) {
+  console.error(
+    "mac-use-mcp requires Node.js 22+. Current: " + process.version,
+  );
+  process.exit(1);
+}
+
+const HELP_TEXT = `mac-use-mcp v${version} — MCP server for macOS desktop automation
+
+Usage: mac-use-mcp (launched by an MCP client over stdio)
+
+Options:
+  --version  Print version and exit
+  --help     Show this help message and exit
+
+See https://github.com/antbotlab/mac-use-mcp for documentation.`;
+
+if (process.argv.includes("--version")) {
+  console.log(version);
+  process.exit(0);
+}
+
+if (process.argv.includes("--help")) {
+  console.log(HELP_TEXT);
+  process.exit(0);
+}
+
+const unrecognizedFlag = process.argv
+  .slice(2)
+  .find((arg) => arg.startsWith("--"));
+if (unrecognizedFlag) {
+  console.error(`Unknown flag: ${unrecognizedFlag}\n`);
+  console.error(HELP_TEXT);
+  process.exit(1);
+}
+
+if (process.stdin.isTTY) {
+  console.log(
+    `mac-use-mcp v${version} — MCP server for macOS desktop automation\n` +
+      "This server communicates over stdio and is meant to be launched by an MCP client.\n" +
+      "See https://github.com/antbotlab/mac-use-mcp#install for setup instructions.",
+  );
+  process.exit(0);
+}
+
+// -- Start server ------------------------------------------------------------
+
 main().catch((error: unknown) => {
   process.stderr.write(
     `Fatal: ${error instanceof Error ? error.message : String(error)}\n`,
