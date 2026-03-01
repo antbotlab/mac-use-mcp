@@ -2,8 +2,6 @@
 
 Zero-dependency macOS desktop automation via MCP.
 
-<!-- TODO: Record demo GIF -->
-
 [![npm version](https://img.shields.io/npm/v/mac-use-mcp)](https://www.npmjs.com/package/mac-use-mcp)
 [![license](https://img.shields.io/npm/l/mac-use-mcp)](./LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
@@ -64,39 +62,9 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-### Cursor
+### Other MCP Clients (Cursor / Windsurf / Cline)
 
-Add to Cursor MCP settings:
-
-```json
-{
-  "mcpServers": {
-    "mac-use-mcp": {
-      "command": "npx",
-      "args": ["mac-use-mcp"]
-    }
-  }
-}
-```
-
-### Windsurf
-
-Add to Windsurf MCP settings:
-
-```json
-{
-  "mcpServers": {
-    "mac-use-mcp": {
-      "command": "npx",
-      "args": ["mac-use-mcp"]
-    }
-  }
-}
-```
-
-### Cline
-
-Add to Cline MCP settings:
+Add to your MCP configuration file:
 
 ```json
 {
@@ -152,6 +120,32 @@ Required for screenshots.
 - **Secure input fields**: Password fields and other secure text inputs block synthetic keyboard events. This is a macOS security feature.
 - **System dialogs**: Some system-level dialogs (e.g., FileVault unlock, Login Window) cannot be interacted with programmatically due to macOS security restrictions.
 
+## Troubleshooting
+
+### Permission prompts keep appearing
+Grant Accessibility and Screen Recording permissions to your terminal app in System Settings > Privacy & Security. A restart of the terminal may be required.
+
+### macOS Sequoia permission dialogs
+macOS 15 (Sequoia) introduced stricter permission prompts. Allow the prompts when they appear. The `check_permissions` tool can verify your current permission status.
+
+### Secure input fields
+Some password fields and secure text inputs block programmatic key events. This is a macOS security feature. Use `clipboard_write` + `press_key("cmd+v")` as a workaround.
+
+### Screen recording shows black screenshots
+Ensure Screen Recording permission is granted to your terminal app (not just Accessibility). Restart the terminal after granting.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+
+## Security
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
+
 ## License
 
 [MIT](./LICENSE) &copy; 2026 antbotlab
+
+---
+
+macOS is a trademark of Apple Inc., registered in the U.S. and other countries and regions.

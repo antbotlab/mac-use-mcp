@@ -23,14 +23,16 @@ const GetCursorPositionInputSchema = z.object({});
 // -- Response schemas (validate Swift helper output) -------------------------
 
 const DisplayInfoResponseSchema = z.object({
-  displays: z.array(z.object({
-    name: z.string(),
-    width: z.number(),
-    height: z.number(),
-    x: z.number(),
-    y: z.number(),
-    scaleFactor: z.number(),
-  })),
+  displays: z.array(
+    z.object({
+      name: z.string(),
+      width: z.number(),
+      height: z.number(),
+      x: z.number(),
+      y: z.number(),
+      scaleFactor: z.number(),
+    }),
+  ),
 });
 
 const CursorPositionResponseSchema = z.object({

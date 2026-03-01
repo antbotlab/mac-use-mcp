@@ -1,6 +1,9 @@
 import { readFile, unlink } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
-import { DEFAULT_MAX_DIMENSION, SCREENCAPTURE_TIMEOUT_MS } from "../constants.js";
+import {
+  DEFAULT_MAX_DIMENSION,
+  SCREENCAPTURE_TIMEOUT_MS,
+} from "../constants.js";
 import { execFileAsync } from "./exec.js";
 import { runInputHelper } from "./input-helper.js";
 import { ListWindowsResponseSchema } from "../tools/window.js";
@@ -69,8 +72,8 @@ async function getWindowId(windowTitle: string): Promise<string> {
   const result = ListWindowsResponseSchema.parse(response);
 
   const titleLower = windowTitle.toLowerCase();
-  const match = result.windows.find(
-    w => w.title.toLowerCase().includes(titleLower),
+  const match = result.windows.find((w) =>
+    w.title.toLowerCase().includes(titleLower),
   );
 
   if (!match) {
@@ -99,7 +102,9 @@ async function getImageDimensions(
   const heightMatch = stdout.match(/pixelHeight:\s*(\d+)/);
 
   if (!widthMatch || !heightMatch) {
-    throw new Error(`Failed to parse image dimensions from sips output: ${stdout}`);
+    throw new Error(
+      `Failed to parse image dimensions from sips output: ${stdout}`,
+    );
   }
 
   return {
@@ -155,7 +160,9 @@ export async function captureScreen(
     switch (mode) {
       case "region": {
         if (!region) {
-          throw new Error('Region coordinates are required when mode is "region"');
+          throw new Error(
+            'Region coordinates are required when mode is "region"',
+          );
         }
         args.push("-R", `${region.x},${region.y},${region.w},${region.h}`);
         break;

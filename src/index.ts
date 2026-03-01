@@ -14,26 +14,17 @@ import {
   utilityToolDefinitions,
   utilityToolHandlers,
 } from "./tools/utility.js";
-import {
-  screenToolDefinitions,
-  screenToolHandlers,
-} from "./tools/screen.js";
+import { screenToolDefinitions, screenToolHandlers } from "./tools/screen.js";
 import {
   screenshotToolDefinitions,
   screenshotToolHandlers,
 } from "./tools/screenshot.js";
-import {
-  mouseToolDefinitions,
-  mouseToolHandlers,
-} from "./tools/mouse.js";
+import { mouseToolDefinitions, mouseToolHandlers } from "./tools/mouse.js";
 import {
   keyboardToolDefinitions,
   keyboardToolHandlers,
 } from "./tools/keyboard.js";
-import {
-  windowToolDefinitions,
-  windowToolHandlers,
-} from "./tools/window.js";
+import { windowToolDefinitions, windowToolHandlers } from "./tools/window.js";
 import {
   clipboardToolDefinitions,
   clipboardToolHandlers,
@@ -78,7 +69,7 @@ const server = new Server(
 /**
  * List available tools.
  */
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
+server.setRequestHandler(ListToolsRequestSchema, () => ({
   tools: allToolDefinitions,
 }));
 
@@ -104,16 +95,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   try {
-    return await handler((args ?? {}) as Record<string, unknown>);
+    return await handler(args ?? {});
   } catch (error: unknown) {
     if (error instanceof ZodError) {
       const flat = error.flatten();
       const fieldErrors = Object.entries(flat.fieldErrors)
         .map(([field, msgs]) => `  ${field}: ${(msgs ?? []).join(", ")}`)
         .join("\n");
-      const formErrors = flat.formErrors.length > 0
-        ? flat.formErrors.join(", ")
-        : "";
+      const formErrors =
+        flat.formErrors.length > 0 ? flat.formErrors.join(", ") : "";
       const detail = [formErrors, fieldErrors].filter(Boolean).join("\n");
       return {
         content: [

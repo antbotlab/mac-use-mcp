@@ -136,7 +136,9 @@ export const PERMISSION_CHECK_TIMEOUT_MS = 5_000;
  */
 export const ERROR_MESSAGES = {
   TIMEOUT: "Operation timed out",
-  PERMISSION_DENIED: "Accessibility permission denied — grant access in System Settings > Privacy & Security > Accessibility",
-  BINARY_NOT_FOUND: "Required helper binary not found — run `pnpm run build:swift` to compile native helpers",
+  PERMISSION_DENIED:
+    "Accessibility permission denied — grant access in System Settings > Privacy & Security > Accessibility",
+  BINARY_NOT_FOUND:
+    "Required helper binary not found — run `pnpm run build:swift` to compile native helpers",
   INVALID_ARGS: "Invalid arguments provided to tool",
 } as const;

@@ -70,7 +70,8 @@ export async function runInputHelper(
 
     const stderr = execError.stderr?.trim() ?? "";
     throw new Error(
-      stderr || `Input helper failed with exit code ${execError.code ?? "unknown"}`,
+      stderr ||
+        `Input helper failed with exit code ${execError.code ?? "unknown"}`,
     );
   }
 }

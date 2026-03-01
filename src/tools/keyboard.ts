@@ -51,7 +51,10 @@ const PASTE_SETTLE_MS = 50;
 // -- Schemas -----------------------------------------------------------------
 
 const TypeTextInputSchema = z.object({
-  text: z.string().min(1).describe("Text to type. Supports full Unicode including CJK and emoji."),
+  text: z
+    .string()
+    .min(1)
+    .describe("Text to type. Supports full Unicode including CJK and emoji."),
 });
 
 const PressKeyInputSchema = z.object({
@@ -69,7 +72,7 @@ export const keyboardToolDefinitions: Tool[] = [
   {
     name: "type_text",
     description:
-      "Type text at the current cursor position using clipboard paste. Supports full Unicode including CJK characters and emoji. If secure input is active (e.g. password fields), returns a note suggesting clipboard_write + press_key(\"cmd+v\") as an alternative.",
+      'Type text at the current cursor position using clipboard paste. Supports full Unicode including CJK characters and emoji. If secure input is active (e.g. password fields), returns a note suggesting clipboard_write + press_key("cmd+v") as an alternative.',
     inputSchema: zodToToolInputSchema(TypeTextInputSchema),
   },
   {

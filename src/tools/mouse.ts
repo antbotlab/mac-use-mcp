@@ -34,8 +34,16 @@ const SILENT_HINT =
 // -- Schemas -----------------------------------------------------------------
 
 const ClickInputSchema = z.object({
-  x: z.number().int().nonnegative().describe("X coordinate (non-negative integer)"),
-  y: z.number().int().nonnegative().describe("Y coordinate (non-negative integer)"),
+  x: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("X coordinate (non-negative integer)"),
+  y: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("Y coordinate (non-negative integer)"),
   button: z
     .enum(MOUSE_BUTTONS)
     .default("left")
@@ -51,37 +59,71 @@ const ClickInputSchema = z.object({
 });
 
 const MoveMouseInputSchema = z.object({
-  x: z.number().int().nonnegative().describe("X coordinate (non-negative integer)"),
-  y: z.number().int().nonnegative().describe("Y coordinate (non-negative integer)"),
+  x: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("X coordinate (non-negative integer)"),
+  y: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("Y coordinate (non-negative integer)"),
 });
 
 const ScrollInputSchema = z.object({
-  x: z.number().int().nonnegative().describe("X coordinate (non-negative integer)"),
-  y: z.number().int().nonnegative().describe("Y coordinate (non-negative integer)"),
-  direction: z
-    .enum(SCROLL_DIRECTIONS)
-    .describe("Scroll direction"),
+  x: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("X coordinate (non-negative integer)"),
+  y: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("Y coordinate (non-negative integer)"),
+  direction: z.enum(SCROLL_DIRECTIONS).describe("Scroll direction"),
   amount: z
     .number()
     .int()
     .positive()
     .max(SCROLL_MAX_AMOUNT)
     .default(SCROLL_DEFAULT_AMOUNT)
-    .describe(`Scroll amount in discrete steps (default: ${SCROLL_DEFAULT_AMOUNT})`),
+    .describe(
+      `Scroll amount in discrete steps (default: ${SCROLL_DEFAULT_AMOUNT})`,
+    ),
 });
 
 const DragInputSchema = z.object({
-  start_x: z.number().int().nonnegative().describe("Start X coordinate (non-negative integer)"),
-  start_y: z.number().int().nonnegative().describe("Start Y coordinate (non-negative integer)"),
-  end_x: z.number().int().nonnegative().describe("End X coordinate (non-negative integer)"),
-  end_y: z.number().int().nonnegative().describe("End Y coordinate (non-negative integer)"),
+  start_x: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("Start X coordinate (non-negative integer)"),
+  start_y: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("Start Y coordinate (non-negative integer)"),
+  end_x: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("End X coordinate (non-negative integer)"),
+  end_y: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("End Y coordinate (non-negative integer)"),
   duration_ms: z
     .number()
     .int()
     .positive()
     .max(DRAG_MAX_DURATION_MS)
     .default(DRAG_DEFAULT_DURATION_MS)
-    .describe(`Drag duration in milliseconds (default: ${DRAG_DEFAULT_DURATION_MS})`),
+    .describe(
+      `Drag duration in milliseconds (default: ${DRAG_DEFAULT_DURATION_MS})`,
+    ),
 });
 
 // -- Tool definitions --------------------------------------------------------
@@ -89,8 +131,7 @@ const DragInputSchema = z.object({
 export const mouseToolDefinitions: Tool[] = [
   {
     name: "click",
-    description:
-      `Click at the specified screen coordinates. Supports left/right/middle button, single/double/triple click, and modifier keys. ${SILENT_HINT}`,
+    description: `Click at the specified screen coordinates. Supports left/right/middle button, single/double/triple click, and modifier keys. ${SILENT_HINT}`,
     inputSchema: zodToToolInputSchema(ClickInputSchema),
     annotations: {
       readOnlyHint: false,
@@ -108,8 +149,7 @@ export const mouseToolDefinitions: Tool[] = [
   },
   {
     name: "scroll",
-    description:
-      `Scroll at the specified screen coordinates in the given direction. ${SILENT_HINT}`,
+    description: `Scroll at the specified screen coordinates in the given direction. ${SILENT_HINT}`,
     inputSchema: zodToToolInputSchema(ScrollInputSchema),
     annotations: {
       readOnlyHint: false,
