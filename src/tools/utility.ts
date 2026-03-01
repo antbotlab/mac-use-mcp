@@ -5,6 +5,7 @@ import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { zodToToolInputSchema } from "../helpers/schema.js";
 import { execFileAsync } from "../helpers/exec.js";
 import { PERMISSION_CHECK_TIMEOUT_MS } from "../constants.js";
+import { enqueue } from "../queue.js";
 
 // -- Constants ---------------------------------------------------------------
 
@@ -170,6 +171,6 @@ export const utilityToolHandlers: Record<
   string,
   (args: Record<string, unknown>) => Promise<CallToolResult>
 > = {
-  check_permissions: () => handleCheckPermissions(),
+  check_permissions: () => enqueue(() => handleCheckPermissions()),
   wait: handleWait,
 };

@@ -1,11 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   KEY_CODES,
-  MODIFIER_FLAGS,
   DEFAULT_MAX_DIMENSION,
   APPLESCRIPT_TIMEOUT_MS,
   CLIPBOARD_TIMEOUT_MS,
-  SCREENCAPTURE_TIMEOUT_MS,
   INPUT_HELPER_TIMEOUT_MS,
   OPEN_COMMAND_TIMEOUT_MS,
   PERMISSION_CHECK_TIMEOUT_MS,
@@ -58,28 +56,6 @@ describe("KEY_CODES", () => {
   });
 });
 
-describe("MODIFIER_FLAGS", () => {
-  it("has exactly 4 entries", () => {
-    expect(Object.keys(MODIFIER_FLAGS)).toHaveLength(4);
-  });
-
-  it("contains expected modifiers", () => {
-    expect(MODIFIER_FLAGS).toHaveProperty("command");
-    expect(MODIFIER_FLAGS).toHaveProperty("shift");
-    expect(MODIFIER_FLAGS).toHaveProperty("option");
-    expect(MODIFIER_FLAGS).toHaveProperty("control");
-  });
-
-  it("all values are distinct positive numbers", () => {
-    const values = Object.values(MODIFIER_FLAGS);
-    const unique = new Set(values);
-    expect(unique.size).toBe(values.length);
-    for (const v of values) {
-      expect(v).toBeGreaterThan(0);
-    }
-  });
-});
-
 describe("DEFAULT_MAX_DIMENSION", () => {
   it("is 0 (no resize)", () => {
     expect(DEFAULT_MAX_DIMENSION).toBe(0);
@@ -91,7 +67,6 @@ describe("timeouts", () => {
     const timeouts = [
       APPLESCRIPT_TIMEOUT_MS,
       CLIPBOARD_TIMEOUT_MS,
-      SCREENCAPTURE_TIMEOUT_MS,
       INPUT_HELPER_TIMEOUT_MS,
       OPEN_COMMAND_TIMEOUT_MS,
       PERMISSION_CHECK_TIMEOUT_MS,
@@ -106,9 +81,7 @@ describe("timeouts", () => {
 describe("ERROR_MESSAGES", () => {
   it("has all expected keys", () => {
     expect(ERROR_MESSAGES).toHaveProperty("TIMEOUT");
-    expect(ERROR_MESSAGES).toHaveProperty("PERMISSION_DENIED");
     expect(ERROR_MESSAGES).toHaveProperty("BINARY_NOT_FOUND");
-    expect(ERROR_MESSAGES).toHaveProperty("INVALID_ARGS");
   });
 
   it("all values are non-empty strings", () => {

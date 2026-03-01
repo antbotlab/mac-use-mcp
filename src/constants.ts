@@ -95,19 +95,6 @@ export const KEY_CODES = {
   Function: 0x3f,
 } as const;
 
-/**
- * CGEvent modifier flag bitmasks.
- *
- * Passed to `CGEventSetFlags` / `CGEventGetFlags` to indicate
- * which modifier keys are held during a keyboard or mouse event.
- */
-export const MODIFIER_FLAGS = {
-  command: 0x100000,
-  shift: 0x020000,
-  option: 0x080000,
-  control: 0x040000,
-} as const;
-
 /** Default maximum dimension (width or height) for screenshot resizing. 0 = no resize. */
 export const DEFAULT_MAX_DIMENSION = 0;
 
@@ -118,9 +105,6 @@ export const APPLESCRIPT_TIMEOUT_MS = 15_000;
 
 /** Timeout for clipboard commands: pbpaste, pbcopy (ms). */
 export const CLIPBOARD_TIMEOUT_MS = 5_000;
-
-/** Timeout for screencapture and sips image-processing commands (ms). */
-export const SCREENCAPTURE_TIMEOUT_MS = 10_000;
 
 /** Timeout for Swift input-helper binary execution (ms). */
 export const INPUT_HELPER_TIMEOUT_MS = 5_000;
@@ -136,9 +120,6 @@ export const PERMISSION_CHECK_TIMEOUT_MS = 5_000;
  */
 export const ERROR_MESSAGES = {
   TIMEOUT: "Operation timed out",
-  PERMISSION_DENIED:
-    "Accessibility permission denied — grant access in System Settings > Privacy & Security > Accessibility",
   BINARY_NOT_FOUND:
     "Required helper binary not found — run `pnpm run build:swift` to compile native helpers",
-  INVALID_ARGS: "Invalid arguments provided to tool",
 } as const;
