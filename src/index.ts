@@ -98,18 +98,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return await handler(args ?? {});
   } catch (error: unknown) {
     if (error instanceof ZodError) {
-      const flat = error.flatten();
-      const fieldErrors = Object.entries(flat.fieldErrors)
-        .map(([field, msgs]) => `  ${field}: ${(msgs ?? []).join(", ")}`)
-        .join("\n");
-      const formErrors =
-        flat.formErrors.length > 0 ? flat.formErrors.join(", ") : "";
-      const detail = [formErrors, fieldErrors].filter(Boolean).join("\n");
+      const messages = error.issues.map(
+        (issue) => `  ${issue.path.join(".")}: ${issue.message}`,
+      );
       return {
         content: [
           {
             type: "text" as const,
-            text: `Validation error:\n${detail}`,
+            text: `Validation error:\n${messages.join("\n")}`,
           },
         ],
         isError: true,
