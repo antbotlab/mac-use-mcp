@@ -19,7 +19,8 @@ export type InputCommand =
   | "secure"
   | "display_info"
   | "list_windows"
-  | "screenshot";
+  | "screenshot"
+  | "get_ui_elements";
 
 /**
  * Execute the Swift input-helper binary with the given command and arguments.

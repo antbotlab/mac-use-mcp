@@ -1,4 +1,5 @@
 import Carbon
+import Cocoa
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -810,6 +811,171 @@ func handleScreenshot(_ args: [String: Any]) {
     ])
 }
 
+// MARK: - Accessibility UI Elements Handler
+
+/// Maximum number of elements to return from a single get_ui_elements query.
+/// Capped to prevent excessive output that would overwhelm LLM context windows.
+private let maxUIElements = 50
+
+/// Traverse the AX tree in breadth-first order, collecting element metadata.
+///
+/// Filters by role and title when specified. Stops when `maxUIElements` is
+/// reached or the tree is exhausted up to `maxDepth` levels.
+///
+/// - Parameters:
+///   - root: The root AXUIElement (typically an application element).
+///   - maxDepth: Maximum tree traversal depth.
+///   - roleFilter: Optional AX role string to match exactly (e.g. "AXButton").
+///   - titleFilter: Optional case-insensitive substring to match against title or description.
+/// - Returns: Array of element dictionaries with role, title, position, size, and states.
+func collectUIElements(
+    root: AXUIElement,
+    maxDepth: Int,
+    roleFilter: String?,
+    titleFilter: String?
+) -> [[String: Any]] {
+    var results: [[String: Any]] = []
+    var queue: [(element: AXUIElement, depth: Int)] = [(root, 0)]
+
+    while !queue.isEmpty && results.count < maxUIElements {
+        let (element, depth) = queue.removeFirst()
+        if depth > maxDepth { continue }
+
+        // Extract role
+        var roleRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef)
+        let role = roleRef as? String ?? ""
+
+        // Extract title
+        var titleRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
+        let title = titleRef as? String
+
+        // Fallback: AXDescription
+        var descRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descRef)
+        let axDescription = descRef as? String
+
+        // Extract value
+        var valueRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &valueRef)
+        let value = valueRef as? String
+
+        // Extract position
+        var positionRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &positionRef)
+        var position = CGPoint.zero
+        if let positionValue = positionRef {
+            AXValueGetValue(positionValue as! AXValue, .cgPoint, &position)
+        }
+
+        // Extract size
+        var sizeRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef)
+        var size = CGSize.zero
+        if let sizeValue = sizeRef {
+            AXValueGetValue(sizeValue as! AXValue, .cgSize, &size)
+        }
+
+        // Extract enabled state
+        var enabledRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXEnabledAttribute as CFString, &enabledRef)
+        let enabled = enabledRef as? Bool ?? true
+
+        // Extract focused state
+        var focusedRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXFocusedAttribute as CFString, &focusedRef)
+        let focused = focusedRef as? Bool ?? false
+
+        // Apply filters
+        let displayTitle = title ?? axDescription
+        let passesRoleFilter = roleFilter == nil || role == roleFilter
+        let passesTitleFilter = titleFilter == nil ||
+            (displayTitle?.lowercased().contains(titleFilter!.lowercased()) ?? false)
+
+        // Include element if it has a meaningful role and passes all filters
+        if !role.isEmpty && passesRoleFilter && passesTitleFilter {
+            var entry: [String: Any] = [
+                "role": role,
+                "position": ["x": Int(position.x), "y": Int(position.y)],
+                "size": ["width": Int(size.width), "height": Int(size.height)],
+                "enabled": enabled,
+                "focused": focused,
+            ]
+            if let t = displayTitle, !t.isEmpty {
+                entry["title"] = t
+            }
+            if let v = value, !v.isEmpty {
+                entry["value"] = v
+            }
+            results.append(entry)
+        }
+
+        // Enqueue children for BFS traversal
+        if depth < maxDepth {
+            var childrenRef: CFTypeRef?
+            AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenRef)
+            if let children = childrenRef as? [AXUIElement] {
+                for child in children {
+                    queue.append((child, depth + 1))
+                }
+            }
+        }
+    }
+
+    return results
+}
+
+/// Handle the "get_ui_elements" command.
+///
+/// Queries visible UI elements of an application via the macOS Accessibility API.
+/// Uses BFS traversal with optional role and title filters.
+///
+/// Args: {"app":"optional", "role":"AXButton", "title":"substring", "max_depth":5}
+func handleGetUIElements(_ args: [String: Any]) {
+    let appName = args["app"] as? String
+    let roleFilter = args["role"] as? String
+    let titleFilter = args["title"] as? String
+    let maxDepth = args["max_depth"] as? Int ?? 5
+
+    // Resolve PID: fuzzy match against running apps, or use frontmost
+    let pid: pid_t
+    if let name = appName {
+        let apps = NSWorkspace.shared.runningApplications.filter {
+            $0.activationPolicy == .regular
+        }
+        let nameLower = name.lowercased()
+
+        let match = apps.first(where: { ($0.localizedName ?? "").lowercased() == nameLower })
+            ?? apps.first(where: { ($0.localizedName ?? "").lowercased().hasPrefix(nameLower) })
+            ?? apps.first(where: { ($0.localizedName ?? "").lowercased().contains(nameLower) })
+
+        guard let app = match else {
+            fail("get_ui_elements: no running application found matching '\(name)'")
+        }
+        pid = app.processIdentifier
+    } else {
+        guard let frontmost = NSWorkspace.shared.frontmostApplication else {
+            fail("get_ui_elements: no frontmost application found")
+        }
+        pid = frontmost.processIdentifier
+    }
+
+    let appElement = AXUIElementCreateApplication(pid)
+    let elements = collectUIElements(
+        root: appElement,
+        maxDepth: maxDepth,
+        roleFilter: roleFilter,
+        titleFilter: titleFilter
+    )
+
+    outputJSON([
+        "success": true,
+        "elements": elements,
+        "count": elements.count,
+    ])
+}
+
 // MARK: - Main Entry Point
 
 let arguments = CommandLine.arguments
@@ -852,6 +1018,8 @@ case "list_windows":
     handleListWindows(args)
 case "screenshot":
     handleScreenshot(args)
+case "get_ui_elements":
+    handleGetUIElements(args)
 default:
     fail("unknown command: \(command)")
 }
