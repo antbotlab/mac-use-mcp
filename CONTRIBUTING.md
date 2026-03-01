@@ -25,7 +25,10 @@ pnpm build
 | Command | Description |
 | --- | --- |
 | `pnpm build` | Compile TypeScript to `dist/` |
+| `pnpm build:swift` | Compile the Swift input-helper binary |
 | `pnpm start` | Run the MCP server |
+| `pnpm test` | Run all tests once |
+| `pnpm test:watch` | Run tests in watch mode |
 | `pnpm lint` | Run ESLint |
 | `pnpm format` | Format code with Prettier |
 
