@@ -5,6 +5,7 @@ import {
   runAppleScript,
   escapeAppleScriptString,
 } from "../helpers/applescript.js";
+import { resolveAppName } from "../helpers/app-resolver.js";
 import { enqueue } from "../queue.js";
 
 // -- Schemas -----------------------------------------------------------------
@@ -104,7 +105,8 @@ async function handleClickMenu(
     };
   }
 
-  const script = buildMenuClickScript(parsed.app, parts);
+  const app = await resolveAppName(parsed.app);
+  const script = buildMenuClickScript(app, parts);
   await runAppleScript(script);
 
   return {
