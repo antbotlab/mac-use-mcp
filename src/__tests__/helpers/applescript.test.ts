@@ -70,7 +70,7 @@ describe("escapeAppleScriptString", () => {
   });
 
   it("strips mixed control characters while preserving unicode", () => {
-    expect(escapeAppleScriptString("café\n你好\t\"world\"\r\x00")).toBe(
+    expect(escapeAppleScriptString('café\n你好\t"world"\r\x00')).toBe(
       'café你好\\"world\\"',
     );
   });

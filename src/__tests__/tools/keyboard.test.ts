@@ -73,9 +73,9 @@ describe("press_key schema", () => {
   });
 
   it("rejects key exceeding max length (200)", () => {
-    expect(() =>
-      PressKeyInputSchema.parse({ key: "a".repeat(201) }),
-    ).toThrow(ZodError);
+    expect(() => PressKeyInputSchema.parse({ key: "a".repeat(201) })).toThrow(
+      ZodError,
+    );
   });
 
   it("accepts key at max length (200)", () => {
