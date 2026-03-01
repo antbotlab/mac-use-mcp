@@ -57,16 +57,18 @@ func applyModifiers(_ event: CGEvent, _ modifiers: [String]) {
 
 // MARK: - Bounds Check Helper
 
-/// Check whether a point is within any active display's bounds.
+/// Check whether a point falls within the union bounding rect of all active displays.
 ///
-/// Returns a warning string if the point is outside all screens, or nil if within bounds.
+/// Returns a warning string if the point is outside the combined screen area,
+/// or nil if within bounds. Note: for non-contiguous multi-monitor layouts,
+/// points in gaps between displays may not trigger a warning.
 func offScreenWarning(x: CGFloat, y: CGFloat) -> String? {
     let bounds = logicalScreenBounds()
     let point = CGPoint(x: x, y: y)
     if bounds.contains(point) {
         return nil
     }
-    return "Coordinates (\(Int(x)), \(Int(y))) are outside all screen bounds \(Int(bounds.origin.x)),\(Int(bounds.origin.y)) \(Int(bounds.size.width))x\(Int(bounds.size.height))"
+    return "Coordinates (\(Int(x)), \(Int(y))) are outside all screen bounds (\(Int(bounds.origin.x)), \(Int(bounds.origin.y))) size \(Int(bounds.size.width))x\(Int(bounds.size.height))"
 }
 
 // MARK: - Pointer Command Handlers
