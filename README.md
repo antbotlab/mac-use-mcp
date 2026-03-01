@@ -1,18 +1,46 @@
 # mac-use-mcp
 
-Zero-dependency macOS desktop automation via MCP.
+Zero-native-dependency macOS desktop automation via MCP.
+
+Give AI agents eyes and hands on macOS — click, type, screenshot, and inspect any application.
 
 <p align="center">
   <img src="./assets/demo.gif" alt="mac-use-mcp demo" width="800">
+  <br>
+  <em>Demo: an AI agent switching apps, clicking UI elements, typing text, and taking screenshots — all through MCP tool calls.</em>
 </p>
 
+[![CI](https://github.com/antbotlab/mac-use-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/antbotlab/mac-use-mcp/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/mac-use-mcp)](https://www.npmjs.com/package/mac-use-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/mac-use-mcp)](https://www.npmjs.com/package/mac-use-mcp)
 [![license](https://img.shields.io/npm/l/mac-use-mcp)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
 ![Node 22+](https://img.shields.io/badge/Node-22%2B-green)
-[![CI](https://github.com/antbotlab/mac-use-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/antbotlab/mac-use-mcp/actions/workflows/ci.yml)
+
+## Use Cases
+
+- **Automated UI testing** — click buttons, verify element states with `get_ui_elements`, validate screen content via `screenshot`
+- **Desktop workflow automation** — launch apps with `open_application`, fill forms with `type_text`, navigate menus via `click_menu`
+- **Screenshot-based monitoring** — capture screen regions periodically with `screenshot` for visual diffing or alerting
+- **Accessibility inspection** — query UI element trees with `get_ui_elements` for QA and compliance checks
+- **AI agent computer use** — give LLMs eyes and hands on macOS via `screenshot`, `click`, `type_text`, and more
+
+## Why mac-use-mcp?
+
+- **Just works** — `npx mac-use-mcp` and you're done. No node-gyp, no Xcode tools, no build step.
+- **18 tools, one server** — screenshots, clicks, keystrokes, window management, accessibility inspection, and clipboard.
+- **macOS 13+ on Intel and Apple Silicon** — no native addons, no architecture headaches.
+
+| Project | Limitation | mac-use-mcp Advantage |
+| --- | --- | --- |
+| [Peekaboo](https://github.com/steipete/Peekaboo) | macOS 15+ only, beta, source builds require Xcode 16 | macOS 13+, zero config |
+| [automation-mcp](https://github.com/ashwwwin/automation-mcp) | Native Node addon (`node-mac-permissions`), requires rebuild | Zero native deps |
+| [macos-automator-mcp](https://github.com/steipete/macos-automator-mcp) | Script-based (AppleScript/JXA), no direct mouse/keyboard injection | Full input + screenshot |
 
 ## Install
+
+**Requirements:** macOS 13+ and Node.js 22+. The server communicates over **stdio** transport.
 
 No build steps. No native dependencies. Just run:
 
@@ -20,70 +48,7 @@ No build steps. No native dependencies. Just run:
 npx mac-use-mcp
 ```
 
-## Tools
-
-mac-use-mcp exposes 18 tools to any MCP-compatible client:
-
-| Tool | Description |
-| --- | --- |
-| `screenshot` | Capture the screen, a region, or a window by title |
-| `click` | Click at screen coordinates with button, click count, and modifier options |
-| `move_mouse` | Move the cursor to a position |
-| `scroll` | Scroll in any direction at a position |
-| `drag` | Drag from one point to another |
-| `type_text` | Type a string of text |
-| `press_key` | Press a key or key combination |
-| `get_screen_info` | Get display resolution and scaling info |
-| `get_cursor_position` | Get current cursor coordinates |
-| `list_windows` | List all visible windows with positions |
-| `focus_window` | Bring a window to the front |
-| `open_application` | Launch an application by name |
-| `click_menu` | Click a menu bar item by path (e.g., "File > Save As...") |
-| `get_ui_elements` | Query UI elements via Accessibility API (roles, positions, titles) |
-| `clipboard_read` | Read the system clipboard contents |
-| `clipboard_write` | Write text to the system clipboard |
-| `wait` | Pause for a specified duration |
-| `check_permissions` | Verify Accessibility and Screen Recording access |
-
-App names support fuzzy matching — `"chrome"` resolves to `"Google Chrome"`, `"code"` to `"Code"`, etc.
-
-## MCP Client Configuration
-
-### Claude Code
-
-```bash
-claude mcp add mac-use-mcp -- npx mac-use-mcp
-```
-
-### Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "mac-use-mcp": {
-      "command": "npx",
-      "args": ["mac-use-mcp"]
-    }
-  }
-}
-```
-
-### Other MCP Clients (Cursor / Windsurf / Cline)
-
-Add to your MCP configuration file:
-
-```json
-{
-  "mcpServers": {
-    "mac-use-mcp": {
-      "command": "npx",
-      "args": ["mac-use-mcp"]
-    }
-  }
-}
-```
+> `npx` will prompt to install the package on first run. Use `npx -y mac-use-mcp` to skip the confirmation.
 
 ## Permission Setup
 
@@ -108,47 +73,274 @@ Required for screenshots.
 4. Ensure the toggle is enabled
 5. Restart the application if prompted
 
-> Use the `check_permissions` tool to verify both permissions are granted correctly.
+### Verify permissions
 
-## Why mac-use-mcp?
+After granting both permissions and configuring your MCP client (see next section), use the `check_permissions` tool to confirm everything is working:
 
-| Project | Limitation | mac-use-mcp Advantage |
-| --- | --- | --- |
-| [Peekaboo](https://github.com/nicholascpark/peekaboo) | macOS 15+ only, complex setup, beta stability issues | macOS 13+, zero config |
-| [automation-mcp](https://github.com/xdrdak/automation-mcp) | nut.js native dependency, build failures on Apple Silicon | Zero native deps |
-| [macos-automator-mcp](https://github.com/mcp-macos-automator/macos-automator-mcp) | AppleScript only, no input events | Full input + screenshot |
+```
+> check_permissions
+✓ Accessibility: granted
+✓ Screen Recording: granted
+```
 
-- **Zero native dependencies** — no node-gyp, no prebuild, no Xcode Command Line Tools required beyond what ships with macOS
-- **Broad compatibility** — supports macOS 13 Ventura and later, including both Intel and Apple Silicon
-- **Instant setup** — `npx mac-use-mcp` is all it takes; no build step, no config file
+## MCP Client Configuration
+
+<details open>
+<summary><strong>Claude Code</strong></summary>
+
+```bash
+claude mcp add mac-use-mcp -- npx mac-use-mcp
+```
+
+</details>
+
+<details>
+<summary><strong>Claude Desktop</strong></summary>
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "mac-use-mcp": {
+      "command": "npx",
+      "args": ["mac-use-mcp"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>VS Code / Copilot</strong></summary>
+
+Add to `.vscode/mcp.json` in your workspace (or open the Command Palette and run **MCP: Open User Configuration** for global setup):
+
+```json
+{
+  "servers": {
+    "mac-use-mcp": {
+      "command": "npx",
+      "args": ["mac-use-mcp"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Cursor</strong></summary>
+
+Add to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project-level):
+
+```json
+{
+  "mcpServers": {
+    "mac-use-mcp": {
+      "command": "npx",
+      "args": ["mac-use-mcp"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Windsurf</strong></summary>
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "mac-use-mcp": {
+      "command": "npx",
+      "args": ["mac-use-mcp"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Cline</strong></summary>
+
+Open Cline's MCP settings (in the Cline extension panel, click the MCP servers icon), then add:
+
+```json
+{
+  "mcpServers": {
+    "mac-use-mcp": {
+      "command": "npx",
+      "args": ["mac-use-mcp"]
+    }
+  }
+}
+```
+
+</details>
+
+## Tools
+
+This Node.js MCP server exposes 18 tools for mouse, keyboard, and screen control to any MCP-compatible client.
+
+### Screen
+
+| Tool | Description |
+| --- | --- |
+| `screenshot` | Capture the screen, a region, or a window by title (PNG or JPEG) |
+| `get_screen_info` | Get display count, resolution, origin, and scale factor for each display |
+
+### Input
+
+| Tool | Description |
+| --- | --- |
+| `click` | Click at screen coordinates with button, click count, and modifier options |
+| `move_mouse` | Move the cursor to a position |
+| `scroll` | Scroll up, down, left, or right at a position |
+| `drag` | Drag from one point to another over a configurable duration |
+| `type_text` | Type text at the cursor position (supports Unicode, CJK, and emoji) |
+| `press_key` | Press a key or key combination (e.g., `"cmd+c"`, `"Return"`) |
+
+### Window & App
+
+| Tool | Description |
+| --- | --- |
+| `list_windows` | List all visible windows with positions and sizes |
+| `focus_window` | Activate an app and bring a specific window to the front |
+| `open_application` | Launch an application by name |
+| `click_menu` | Click a menu bar item by path (e.g., "File > Save As...") |
+
+App names support fuzzy matching — `"chrome"` resolves to `"Google Chrome"`, `"code"` to `"Code"`, etc.
+
+### Accessibility
+
+| Tool | Description |
+| --- | --- |
+| `get_ui_elements` | Query UI elements via Accessibility API — find buttons, text fields, and other controls by role or title |
+
+### Clipboard
+
+| Tool | Description |
+| --- | --- |
+| `clipboard_read` | Read the current system clipboard as plain text |
+| `clipboard_write` | Write text to the system clipboard |
+
+### Utility
+
+| Tool | Description |
+| --- | --- |
+| `wait` | Pause for a specified duration (in milliseconds, 0–10 000) |
+| `check_permissions` | Verify Accessibility and Screen Recording access |
+| `get_cursor_position` | Get current cursor coordinates |
+
+## Examples
+
+Common workflow patterns using mac-use-mcp tools:
+
+### Screenshot a specific window
+
+```
+1. focus_window({ app: "Safari" })
+2. screenshot({ mode: "window", window_title: "Safari" })
+```
+
+### Click a button in a dialog
+
+```
+1. get_ui_elements({ app: "Finder", role: "AXButton" })
+   → finds "OK" button at position (500, 300)
+2. click({ x: 500, y: 300 })
+```
+
+### Automate a menu action
+
+```
+1. open_application({ name: "TextEdit" })
+2. click_menu({ app: "TextEdit", path: "Format > Make Plain Text" })
+```
+
+### Copy text between apps
+
+```
+1. focus_window({ app: "Safari" })
+2. press_key({ key: "cmd+a" })       # select all
+3. press_key({ key: "cmd+c" })       # copy
+4. focus_window({ app: "Notes" })
+5. press_key({ key: "cmd+v" })       # paste
+```
+
+## How It Works
+
+- **Swift binary** handles mouse input (CGEvent), screen capture (CGWindowListCreateImage), window enumeration (CGWindowListCopyWindowInfo), and UI element queries (Accessibility API)
+- **AppleScript** handles keyboard input (System Events `key code`), window focus, and menu clicks
+- **Node.js MCP server** orchestrates everything over stdio, translating MCP tool calls into system operations
+- **No native Node.js addons** — the Swift binary is pre-compiled and ships with the npm package
+- **Serial execution queue** prevents race conditions between system operations
 
 ## Known Limitations
 
 - **Screen Recording prompt on Sequoia**: macOS 15 shows a monthly system prompt asking to reconfirm Screen Recording access. This is an OS-level behavior and cannot be suppressed.
 - **Secure input fields**: Password fields and other secure text inputs block synthetic keyboard events. This is a macOS security feature.
+- **Keyboard input on macOS 26+**: CGEvent keyboard synthesis is silently blocked. Keyboard input uses AppleScript (`System Events key code`) as a workaround, which may behave differently in some edge cases.
 - **System dialogs**: Some system-level dialogs (e.g., FileVault unlock, Login Window) cannot be interacted with programmatically due to macOS security restrictions.
+- **Headless / CI**: Requires a graphical session. Headless macOS environments (e.g., standard GitHub Actions runners) are not supported.
 
 ## Troubleshooting
 
-### Permission prompts keep appearing
+<details>
+<summary><strong>Permission prompts keep appearing</strong></summary>
+
 Grant Accessibility and Screen Recording permissions to your terminal app in System Settings > Privacy & Security. A restart of the terminal may be required.
 
-### macOS Sequoia permission dialogs
+</details>
+
+<details>
+<summary><strong>macOS Sequoia permission dialogs</strong></summary>
+
 macOS 15 (Sequoia) introduced stricter permission prompts. Allow the prompts when they appear. The `check_permissions` tool can verify your current permission status.
 
-### Secure input fields
+</details>
+
+<details>
+<summary><strong>Secure input fields</strong></summary>
+
 Some password fields and secure text inputs block programmatic key events. This is a macOS security feature. Use `clipboard_write` + `press_key("cmd+v")` as a workaround.
 
-### Screen recording shows black screenshots
+</details>
+
+<details>
+<summary><strong>Screen recording shows black screenshots</strong></summary>
+
 Ensure Screen Recording permission is granted to your terminal app (not just Accessibility). Restart the terminal after granting.
+
+</details>
+
+## Related Projects
+
+- [Playwright MCP](https://github.com/microsoft/playwright-mcp) — Browser automation via accessibility tree. Complements mac-use-mcp for web-only tasks.
+- [Peekaboo](https://github.com/steipete/Peekaboo) — macOS screen automation with ScreenCaptureKit. Requires macOS 15+ and a Swift build.
+- [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) — Curated list of MCP servers across the ecosystem.
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
+[Changelog](CHANGELOG.md)
+
 ## Security
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md).
+
+## Support
+
+- Found a bug? [Open an issue](https://github.com/antbotlab/mac-use-mcp/issues)
+- Have a feature idea? [Open an issue](https://github.com/antbotlab/mac-use-mcp/issues)
+- Like the project? Give it a star — it helps others discover mac-use-mcp.
 
 ## License
 
