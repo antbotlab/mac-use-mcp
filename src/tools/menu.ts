@@ -12,9 +12,7 @@ import { enqueue } from "../queue.js";
 
 const ClickMenuInputSchema = z.object({
   app: z.string().describe("Application name"),
-  path: z
-    .string()
-    .describe('Menu path, e.g. "File > Save As..."'),
+  path: z.string().describe('Menu path, e.g. "File > Save As..."'),
 });
 
 // -- Constants ---------------------------------------------------------------
@@ -76,7 +74,7 @@ function buildMenuClickScript(app: string, parts: string[]): string {
   chain += ` of menu "${root}" of menu bar item "${root}" of menu bar 1`;
 
   return [
-    "tell application \"System Events\"",
+    'tell application "System Events"',
     `  tell process "${safeApp}"`,
     `    ${chain}`,
     "  end tell",

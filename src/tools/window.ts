@@ -129,10 +129,7 @@ async function handleListWindows(
 ): Promise<CallToolResult> {
   const parsed = ListWindowsInputSchema.parse(args);
   const app = parsed.app ? await resolveAppName(parsed.app) : undefined;
-  const response = await runInputHelper(
-    "list_windows",
-    app ? { app } : {},
-  );
+  const response = await runInputHelper("list_windows", app ? { app } : {});
   const result = ListWindowsResponseSchema.parse(response);
 
   const windows: WindowInfo[] = result.windows.map((w) => ({
