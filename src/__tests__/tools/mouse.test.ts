@@ -9,30 +9,30 @@ const SCROLL_DIRECTIONS = ["up", "down", "left", "right"] as const;
 const CLICK_MODIFIERS = ["command", "shift", "option", "control"] as const;
 
 const ClickInputSchema = z.object({
-  x: z.number().int().nonnegative(),
-  y: z.number().int().nonnegative(),
+  x: z.number().int(),
+  y: z.number().int(),
   button: z.enum(MOUSE_BUTTONS).default("left"),
   click_count: z.number().int().min(1).max(3).default(1),
   modifiers: z.array(z.enum(CLICK_MODIFIERS)).optional(),
 });
 
 const MoveMouseInputSchema = z.object({
-  x: z.number().int().nonnegative(),
-  y: z.number().int().nonnegative(),
+  x: z.number().int(),
+  y: z.number().int(),
 });
 
 const ScrollInputSchema = z.object({
-  x: z.number().int().nonnegative(),
-  y: z.number().int().nonnegative(),
+  x: z.number().int(),
+  y: z.number().int(),
   direction: z.enum(SCROLL_DIRECTIONS),
   amount: z.number().int().positive().max(100).default(3),
 });
 
 const DragInputSchema = z.object({
-  start_x: z.number().int().nonnegative(),
-  start_y: z.number().int().nonnegative(),
-  end_x: z.number().int().nonnegative(),
-  end_y: z.number().int().nonnegative(),
+  start_x: z.number().int(),
+  start_y: z.number().int(),
+  end_x: z.number().int(),
+  end_y: z.number().int(),
   duration_ms: z.number().int().positive().max(30_000).default(600),
 });
 
@@ -74,9 +74,10 @@ describe("click schema", () => {
     ).toThrow(ZodError);
   });
 
-  it("rejects negative coordinates", () => {
-    expect(() => ClickInputSchema.parse({ x: -1, y: 0 })).toThrow(ZodError);
-    expect(() => ClickInputSchema.parse({ x: 0, y: -1 })).toThrow(ZodError);
+  it("accepts negative coordinates for secondary displays", () => {
+    const result = ClickInputSchema.parse({ x: -100, y: -500 });
+    expect(result.x).toBe(-100);
+    expect(result.y).toBe(-500);
   });
 
   it("rejects invalid button", () => {

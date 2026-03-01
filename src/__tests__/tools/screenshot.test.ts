@@ -10,8 +10,8 @@ const MAX_MAX_DIMENSION = 4096;
 
 const ScreenshotBaseSchema = z.object({
   mode: z.enum(["full", "region", "window"]).default("full"),
-  x: z.number().int().min(0).optional(),
-  y: z.number().int().min(0).optional(),
+  x: z.number().int().optional(),
+  y: z.number().int().optional(),
   width: z.number().int().min(1).optional(),
   height: z.number().int().min(1).optional(),
   window_title: z.string().min(1).max(1_000).optional(),
@@ -156,16 +156,16 @@ describe("screenshot schema validation", () => {
     );
   });
 
-  it("rejects negative coordinates", () => {
-    expect(() =>
-      ScreenshotInputSchema.parse({
-        mode: "region",
-        x: -1,
-        y: 0,
-        width: 100,
-        height: 100,
-      }),
-    ).toThrow(ZodError);
+  it("accepts negative coordinates for secondary displays", () => {
+    const result = ScreenshotInputSchema.parse({
+      mode: "region",
+      x: -326,
+      y: -1080,
+      width: 100,
+      height: 100,
+    });
+    expect(result.x).toBe(-326);
+    expect(result.y).toBe(-1080);
   });
 
   it("rejects zero-sized region", () => {
