@@ -37,11 +37,15 @@ const ClickInputSchema = z.object({
   x: z
     .number()
     .int()
-    .describe("X coordinate in screen pixels (may be negative for secondary displays)"),
+    .describe(
+      "X coordinate in screen pixels (may be negative for secondary displays)",
+    ),
   y: z
     .number()
     .int()
-    .describe("Y coordinate in screen pixels (may be negative for secondary displays)"),
+    .describe(
+      "Y coordinate in screen pixels (may be negative for secondary displays)",
+    ),
   button: z
     .enum(MOUSE_BUTTONS)
     .default("left")
@@ -63,22 +67,30 @@ const MoveMouseInputSchema = z.object({
   x: z
     .number()
     .int()
-    .describe("X coordinate in screen pixels (may be negative for secondary displays)"),
+    .describe(
+      "X coordinate in screen pixels (may be negative for secondary displays)",
+    ),
   y: z
     .number()
     .int()
-    .describe("Y coordinate in screen pixels (may be negative for secondary displays)"),
+    .describe(
+      "Y coordinate in screen pixels (may be negative for secondary displays)",
+    ),
 });
 
 const ScrollInputSchema = z.object({
   x: z
     .number()
     .int()
-    .describe("X coordinate in screen pixels (may be negative for secondary displays)"),
+    .describe(
+      "X coordinate in screen pixels (may be negative for secondary displays)",
+    ),
   y: z
     .number()
     .int()
-    .describe("Y coordinate in screen pixels (may be negative for secondary displays)"),
+    .describe(
+      "Y coordinate in screen pixels (may be negative for secondary displays)",
+    ),
   direction: z.enum(SCROLL_DIRECTIONS).describe("Scroll direction"),
   amount: z
     .number()
@@ -95,19 +107,27 @@ const DragInputSchema = z.object({
   start_x: z
     .number()
     .int()
-    .describe("Start X coordinate in screen pixels (may be negative for secondary displays)"),
+    .describe(
+      "Start X coordinate in screen pixels (may be negative for secondary displays)",
+    ),
   start_y: z
     .number()
     .int()
-    .describe("Start Y coordinate in screen pixels (may be negative for secondary displays)"),
+    .describe(
+      "Start Y coordinate in screen pixels (may be negative for secondary displays)",
+    ),
   end_x: z
     .number()
     .int()
-    .describe("End X coordinate in screen pixels (may be negative for secondary displays)"),
+    .describe(
+      "End X coordinate in screen pixels (may be negative for secondary displays)",
+    ),
   end_y: z
     .number()
     .int()
-    .describe("End Y coordinate in screen pixels (may be negative for secondary displays)"),
+    .describe(
+      "End Y coordinate in screen pixels (may be negative for secondary displays)",
+    ),
   duration_ms: z
     .number()
     .int()
