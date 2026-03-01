@@ -117,8 +117,7 @@ describe("runInputHelper", () => {
   it("propagates error message from stdout JSON on non-zero exit", async () => {
     mockExecFileAsync.mockRejectedValue(
       makeExecError("Command failed", {
-        stdout:
-          '{"success":false,"error":"no window found matching \'foo\'"}',
+        stdout: '{"success":false,"error":"no window found matching \'foo\'"}',
         stderr: "",
         code: 1,
       }),
