@@ -57,6 +57,10 @@ func applyModifiers(_ event: CGEvent, _ modifiers: [String]) {
 
 // MARK: - Pointer Command Handlers
 
+/// Inter-event delay (microseconds) between click pairs so macOS recognizes
+/// multi-click sequences. Must be well below the system double-click threshold (~500ms).
+private let multiClickDelayUs: UInt32 = 50_000
+
 /// Extract a numeric value from a JSON dictionary as a CGFloat.
 ///
 /// JSONSerialization may return Int, Double, or NSNumber depending on the
@@ -136,7 +140,7 @@ func handleClick(_ args: [String: Any]) {
 
         // Brief delay between click pairs so macOS recognizes multi-click sequences
         if count > 1 && clickIndex < count {
-            usleep(50_000)
+            usleep(multiClickDelayUs)
         }
     }
 

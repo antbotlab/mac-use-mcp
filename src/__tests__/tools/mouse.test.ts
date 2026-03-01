@@ -112,6 +112,12 @@ describe("move_mouse schema", () => {
     expect(result).toEqual({ x: 500, y: 300 });
   });
 
+  it("accepts negative coordinates for secondary displays", () => {
+    const result = MoveMouseInputSchema.parse({ x: -200, y: -1080 });
+    expect(result.x).toBe(-200);
+    expect(result.y).toBe(-1080);
+  });
+
   it("rejects missing fields", () => {
     expect(() => MoveMouseInputSchema.parse({ x: 0 })).toThrow(ZodError);
     expect(() => MoveMouseInputSchema.parse({ y: 0 })).toThrow(ZodError);
@@ -153,6 +159,16 @@ describe("scroll schema", () => {
       ScrollInputSchema.parse({ x: 0, y: 0, direction: "up", amount: 101 }),
     ).toThrow(ZodError);
   });
+
+  it("accepts negative coordinates for secondary displays", () => {
+    const result = ScrollInputSchema.parse({
+      x: -326,
+      y: -1080,
+      direction: "down",
+    });
+    expect(result.x).toBe(-326);
+    expect(result.y).toBe(-1080);
+  });
 });
 
 describe("drag schema", () => {
@@ -188,6 +204,19 @@ describe("drag schema", () => {
         duration_ms: 30001,
       }),
     ).toThrow(ZodError);
+  });
+
+  it("accepts negative coordinates for secondary displays", () => {
+    const result = DragInputSchema.parse({
+      start_x: -326,
+      start_y: -1080,
+      end_x: -100,
+      end_y: -500,
+    });
+    expect(result.start_x).toBe(-326);
+    expect(result.start_y).toBe(-1080);
+    expect(result.end_x).toBe(-100);
+    expect(result.end_y).toBe(-500);
   });
 });
 
