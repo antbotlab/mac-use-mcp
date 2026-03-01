@@ -55,6 +55,7 @@ export async function runInputHelper(
     return JSON.parse(stdout) as Record<string, unknown>;
   } catch (error: unknown) {
     const execError = error as {
+      stdout?: string;
       stderr?: string;
       code?: number | string;
       killed?: boolean;
@@ -70,6 +71,23 @@ export async function runInputHelper(
       throw new Error(`Input helper returned invalid JSON: ${error.message}`, {
         cause: error,
       });
+    }
+
+    // Swift fail() writes {"success":false,"error":"..."} to stdout before exit(1).
+    // Parse it to surface the actual error message.
+    const stdout = execError.stdout?.trim() ?? "";
+    if (stdout) {
+      try {
+        const parsed = JSON.parse(stdout) as Record<string, unknown>;
+        if (typeof parsed.error === "string") {
+          throw new Error(parsed.error, { cause: error });
+        }
+      } catch (parseErr) {
+        // Re-throw if it's our structured error; otherwise fall through
+        if (parseErr instanceof Error && parseErr.cause === error) {
+          throw parseErr;
+        }
+      }
     }
 
     const stderr = execError.stderr?.trim() ?? "";
