@@ -5,7 +5,7 @@ Zero-native-dependency macOS desktop automation via MCP.
 Give AI agents eyes and hands on macOS — click, type, screenshot, and inspect any application.
 
 <p align="center">
-  <img src="./assets/demo.gif" alt="mac-use-mcp demo" width="800">
+  <img src="https://raw.githubusercontent.com/antbotlab/mac-use-mcp/main/assets/demo.gif" alt="mac-use-mcp demo" width="800">
   <br>
   <em>Demo: an AI agent switching apps, clicking UI elements, typing text, and taking screenshots — all through MCP tool calls.</em>
 </p>
@@ -28,13 +28,15 @@ Give AI agents eyes and hands on macOS — click, type, screenshot, and inspect 
 
 ## Why mac-use-mcp?
 
-- **Just works** — `npx mac-use-mcp` and you're done. No node-gyp, no Xcode tools, no build step.
+- **Just works** — `npx mac-use-mcp` and grant two macOS permissions. No node-gyp, no Xcode tools, no build step.
 - **18 tools, one server** — screenshots, clicks, keystrokes, window management, accessibility inspection, and clipboard.
 - **macOS 13+ on Intel and Apple Silicon** — no native addons, no architecture headaches.
 
 ## Install
 
 **Requirements:** macOS 13+ and Node.js 22+. The server communicates over **stdio** transport.
+
+> This package only works on macOS. It will refuse to install on other operating systems.
 
 No build steps. No native dependencies. Just run:
 
