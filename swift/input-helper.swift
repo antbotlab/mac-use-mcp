@@ -543,13 +543,17 @@ func handleListWindows(_ args: [String: Any]) {
             continue
         }
 
-        // Skip tiny/invisible windows
-        if width < 1 || height < 1 { continue }
+        // Skip tiny/invisible windows (below 10×10 are system artifacts)
+        if width < 10 || height < 10 { continue }
 
         // Apply app filter
         if let filter = filterApp, ownerName != filter { continue }
 
         let title = window[kCGWindowName as String] as? String ?? ""
+
+        // When no app filter: skip empty-title windows (system services)
+        if filterApp == nil && title.isEmpty { continue }
+
         let isOnscreen = window[kCGWindowIsOnscreen as String] as? Bool ?? false
 
         windows.append([
