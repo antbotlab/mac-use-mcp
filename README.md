@@ -32,12 +32,6 @@ Give AI agents eyes and hands on macOS — click, type, screenshot, and inspect 
 - **18 tools, one server** — screenshots, clicks, keystrokes, window management, accessibility inspection, and clipboard.
 - **macOS 13+ on Intel and Apple Silicon** — no native addons, no architecture headaches.
 
-| Project | Limitation | mac-use-mcp Advantage |
-| --- | --- | --- |
-| [Peekaboo](https://github.com/steipete/Peekaboo) | macOS 15+ only, beta, source builds require Xcode 16 | macOS 13+, zero config |
-| [automation-mcp](https://github.com/ashwwwin/automation-mcp) | Native Node addon (`node-mac-permissions`), requires rebuild | Zero native deps |
-| [macos-automator-mcp](https://github.com/steipete/macos-automator-mcp) | Script-based (AppleScript/JXA), no direct mouse/keyboard injection | Full input + screenshot |
-
 ## Install
 
 **Requirements:** macOS 13+ and Node.js 22+. The server communicates over **stdio** transport.
