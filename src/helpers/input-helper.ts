@@ -39,8 +39,8 @@ export async function runInputHelper(
   // Verify the binary exists before attempting execution
   try {
     await access(BINARY_PATH, fsConstants.X_OK);
-  } catch {
-    throw new Error(ERROR_MESSAGES.BINARY_NOT_FOUND);
+  } catch (error) {
+    throw new Error(ERROR_MESSAGES.BINARY_NOT_FOUND, { cause: error });
   }
 
   try {
@@ -60,18 +60,21 @@ export async function runInputHelper(
     };
 
     if (execError.killed || execError.signal === "SIGTERM") {
-      throw new Error(ERROR_MESSAGES.TIMEOUT);
+      throw new Error(ERROR_MESSAGES.TIMEOUT, { cause: error });
     }
 
     // Re-throw JSON parse errors as-is
     if (error instanceof SyntaxError) {
-      throw new Error(`Input helper returned invalid JSON: ${error.message}`);
+      throw new Error(`Input helper returned invalid JSON: ${error.message}`, {
+        cause: error,
+      });
     }
 
     const stderr = execError.stderr?.trim() ?? "";
     throw new Error(
       stderr ||
         `Input helper failed with exit code ${execError.code ?? "unknown"}`,
+      { cause: error },
     );
   }
 }
