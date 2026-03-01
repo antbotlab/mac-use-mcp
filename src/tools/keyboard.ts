@@ -46,7 +46,7 @@ const KEY_NAME_EXAMPLES = [
 ];
 
 /** Delay after paste before restoring clipboard (ms). */
-const PASTE_SETTLE_MS = 50;
+const PASTE_SETTLE_MS = 100;
 
 // -- Schemas -----------------------------------------------------------------
 
@@ -54,6 +54,7 @@ const TypeTextInputSchema = z.object({
   text: z
     .string()
     .min(1)
+    .max(100_000)
     .describe("Text to type. Supports full Unicode including CJK and emoji."),
 });
 
@@ -61,6 +62,7 @@ const PressKeyInputSchema = z.object({
   key: z
     .string()
     .min(1)
+    .max(200)
     .describe(
       'Key combo string. Examples: "Return", "cmd+c", "ctrl+shift+F5", "alt+Tab".',
     ),
@@ -72,7 +74,7 @@ export const keyboardToolDefinitions: Tool[] = [
   {
     name: "type_text",
     description:
-      'Type text at the current cursor position using clipboard paste. Supports full Unicode including CJK characters and emoji. If secure input is active (e.g. password fields), returns a note suggesting clipboard_write + press_key("cmd+v") as an alternative.',
+      'Type text at the current cursor position using clipboard paste. Supports full Unicode including CJK characters and emoji. Temporarily replaces clipboard contents. Non-text clipboard content (images, files) will be lost permanently. If secure input is active (e.g. password fields), returns a note suggesting clipboard_write + press_key("cmd+v") as an alternative.',
     inputSchema: zodToToolInputSchema(TypeTextInputSchema),
   },
   {
@@ -130,7 +132,7 @@ async function handleTypeText(
         type: "text" as const,
         text: JSON.stringify({
           success: true,
-          typed: parsed.text,
+          typed_length: parsed.text.length,
         }),
       },
     ],

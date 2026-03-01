@@ -17,13 +17,13 @@ import { keyboardToolHandlers } from "../../tools/keyboard.js";
 
 const mockExecFileAsync = vi.mocked(execFileAsync);
 
-// Re-create schemas for validation tests
+// Re-create schemas for validation tests (must mirror src/tools/keyboard.ts)
 const TypeTextInputSchema = z.object({
-  text: z.string().min(1),
+  text: z.string().min(1).max(100_000),
 });
 
 const PressKeyInputSchema = z.object({
-  key: z.string().min(1),
+  key: z.string().min(1).max(200),
 });
 
 describe("type_text schema", () => {
@@ -44,6 +44,17 @@ describe("type_text schema", () => {
   it("rejects missing text", () => {
     expect(() => TypeTextInputSchema.parse({})).toThrow(ZodError);
   });
+
+  it("rejects text exceeding max length (100000)", () => {
+    expect(() =>
+      TypeTextInputSchema.parse({ text: "a".repeat(100_001) }),
+    ).toThrow(ZodError);
+  });
+
+  it("accepts text at max length (100000)", () => {
+    const result = TypeTextInputSchema.parse({ text: "a".repeat(100_000) });
+    expect(result.text).toHaveLength(100_000);
+  });
 });
 
 describe("press_key schema", () => {
@@ -59,6 +70,17 @@ describe("press_key schema", () => {
 
   it("rejects empty key", () => {
     expect(() => PressKeyInputSchema.parse({ key: "" })).toThrow(ZodError);
+  });
+
+  it("rejects key exceeding max length (200)", () => {
+    expect(() =>
+      PressKeyInputSchema.parse({ key: "a".repeat(201) }),
+    ).toThrow(ZodError);
+  });
+
+  it("accepts key at max length (200)", () => {
+    const result = PressKeyInputSchema.parse({ key: "a".repeat(200) });
+    expect(result.key).toHaveLength(200);
   });
 });
 

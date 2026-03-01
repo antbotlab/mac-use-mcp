@@ -2,18 +2,18 @@ import { describe, it, expect } from "vitest";
 import { z, ZodError } from "zod";
 import { isBundleId, ListWindowsResponseSchema } from "../../tools/window.js";
 
-// Re-create schemas for validation tests
+// Re-create schemas for validation tests (must mirror src/tools/window.ts)
 const ListWindowsInputSchema = z.object({
-  app: z.string().optional(),
+  app: z.string().max(1_000).optional(),
 });
 
 const FocusWindowInputSchema = z.object({
-  app: z.string(),
-  title: z.string().optional(),
+  app: z.string().max(1_000),
+  title: z.string().max(1_000).optional(),
 });
 
 const OpenApplicationInputSchema = z.object({
-  name: z.string(),
+  name: z.string().max(1_000),
 });
 
 describe("list_windows schema", () => {
@@ -25,6 +25,12 @@ describe("list_windows schema", () => {
   it("accepts app filter", () => {
     const result = ListWindowsInputSchema.parse({ app: "Safari" });
     expect(result.app).toBe("Safari");
+  });
+
+  it("rejects app exceeding max length (1000)", () => {
+    expect(() =>
+      ListWindowsInputSchema.parse({ app: "a".repeat(1_001) }),
+    ).toThrow(ZodError);
   });
 });
 
@@ -45,6 +51,21 @@ describe("focus_window schema", () => {
   it("rejects missing app", () => {
     expect(() => FocusWindowInputSchema.parse({})).toThrow(ZodError);
   });
+
+  it("rejects app exceeding max length (1000)", () => {
+    expect(() =>
+      FocusWindowInputSchema.parse({ app: "a".repeat(1_001) }),
+    ).toThrow(ZodError);
+  });
+
+  it("rejects title exceeding max length (1000)", () => {
+    expect(() =>
+      FocusWindowInputSchema.parse({
+        app: "Safari",
+        title: "a".repeat(1_001),
+      }),
+    ).toThrow(ZodError);
+  });
 });
 
 describe("open_application schema", () => {
@@ -55,6 +76,12 @@ describe("open_application schema", () => {
 
   it("rejects missing name", () => {
     expect(() => OpenApplicationInputSchema.parse({})).toThrow(ZodError);
+  });
+
+  it("rejects name exceeding max length (1000)", () => {
+    expect(() =>
+      OpenApplicationInputSchema.parse({ name: "a".repeat(1_001) }),
+    ).toThrow(ZodError);
   });
 });
 

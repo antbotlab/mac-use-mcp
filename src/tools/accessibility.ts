@@ -10,18 +10,21 @@ import { enqueue } from "../queue.js";
 const GetUIElementsInputSchema = z.object({
   app: z
     .string()
+    .max(1_000)
     .optional()
     .describe(
       "Target application name. Default: frontmost app. Supports fuzzy matching.",
     ),
   role: z
     .string()
+    .max(200)
     .optional()
     .describe(
       'Filter by AX role: "AXButton", "AXTextField", "AXStaticText", etc.',
     ),
   title: z
     .string()
+    .max(1_000)
     .optional()
     .describe("Filter by element title (substring, case-insensitive)."),
   max_depth: z
@@ -41,6 +44,7 @@ export const accessibilityToolDefinitions: Tool[] = [
     description:
       "Query visible UI elements of an application via macOS Accessibility API. " +
       "Returns element roles, titles, positions (screen coordinates), sizes, and states. " +
+      "May return text content from visible UI elements including sensitive data (passwords in non-secure fields, messages, etc.). " +
       "Positions are in logical screen coordinates — pass directly to click tool. " +
       "Coverage varies: native apps expose rich trees; Electron/web apps may expose partial trees; " +
       "games/custom UIs may expose nothing. Requires Accessibility permission.",

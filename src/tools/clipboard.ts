@@ -9,7 +9,7 @@ import { enqueue } from "../queue.js";
 const ClipboardReadInputSchema = z.object({});
 
 const ClipboardWriteInputSchema = z.object({
-  text: z.string().describe("Text to write to the clipboard."),
+  text: z.string().max(100_000).describe("Text to write to the clipboard."),
 });
 
 // -- Tool definitions --------------------------------------------------------

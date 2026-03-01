@@ -19,10 +19,10 @@ import { menuToolHandlers } from "../../tools/menu.js";
 
 const mockRunAppleScript = vi.mocked(runAppleScript);
 
-// Schema
+// Schema (must mirror src/tools/menu.ts)
 const ClickMenuInputSchema = z.object({
-  app: z.string(),
-  path: z.string(),
+  app: z.string().max(1_000),
+  path: z.string().max(1_000),
 });
 
 describe("click_menu schema", () => {
@@ -45,6 +45,24 @@ describe("click_menu schema", () => {
     expect(() => ClickMenuInputSchema.parse({ app: "Finder" })).toThrow(
       ZodError,
     );
+  });
+
+  it("rejects app exceeding max length (1000)", () => {
+    expect(() =>
+      ClickMenuInputSchema.parse({
+        app: "a".repeat(1_001),
+        path: "File > Save",
+      }),
+    ).toThrow(ZodError);
+  });
+
+  it("rejects path exceeding max length (1000)", () => {
+    expect(() =>
+      ClickMenuInputSchema.parse({
+        app: "Finder",
+        path: "a".repeat(1_001),
+      }),
+    ).toThrow(ZodError);
   });
 });
 
