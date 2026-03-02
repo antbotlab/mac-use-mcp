@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-03-02
+
+### Added
+- `mcpName` field in package.json for Official MCP Registry publishing
+- `server.json` for MCP Registry metadata
+- `smithery.yaml` for Smithery directory registration
+
+## [1.1.0] - 2026-03-02
+
+### Added
+- `screenshot` ruler overlay (`ruler` parameter) for precise coordinate reading
+
+### Docs
+- Add safety warning for sandbox usage and data protection
+- Add model recommendations and MCP client configurations
+- Add banner and replace demo GIF with MP4
+
 ## [1.0.1] - 2026-03-02
 
 ### Fixed
