@@ -2,10 +2,10 @@
 
 # mac-use-mcp
 
+![demo](assets/demo.gif)
+
 > [!WARNING]
 > **This tool has full control over mouse, keyboard, and screen.** Please use in a sandboxed environment to protect your privacy and avoid accidental data loss by your agents. You are responsible for any actions performed through this tool.
-
-https://github.com/user-attachments/assets/6dead6bc-7230-4278-bd2d-b307b2cabc5d
 
 Zero-native-dependency macOS desktop automation via MCP.
 
