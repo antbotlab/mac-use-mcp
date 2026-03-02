@@ -1,14 +1,12 @@
+![ant-09-banner-night-03](https://github.com/user-attachments/assets/23587ca9-1b58-4257-950d-0a1c144592ef)
+
 # mac-use-mcp
+
+https://github.com/user-attachments/assets/6dead6bc-7230-4278-bd2d-b307b2cabc5d
 
 Zero-native-dependency macOS desktop automation via MCP.
 
 Give AI agents eyes and hands on macOS — click, type, screenshot, and inspect any application.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/antbotlab/mac-use-mcp/main/assets/demo.gif" alt="mac-use-mcp demo" width="800">
-  <br>
-  <em>Demo: an AI agent switching apps, clicking UI elements, typing text, and taking screenshots — all through MCP tool calls.</em>
-</p>
 
 [![CI](https://github.com/antbotlab/mac-use-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/antbotlab/mac-use-mcp/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/mac-use-mcp)](https://www.npmjs.com/package/mac-use-mcp)
