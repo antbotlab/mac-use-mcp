@@ -77,6 +77,12 @@ const ScreenshotBaseSchema = z.object({
     .enum(["png", "jpeg"])
     .default("png")
     .describe('Output image format: "png" (default) or "jpeg"'),
+  ruler: z
+    .boolean()
+    .default(false)
+    .describe(
+      "When true, overlay coordinate rulers on the top and left edges of the screenshot. Tick labels show screen coordinates for precise positioning.",
+    ),
 });
 
 /** Full runtime validation schema with cross-field refinements. */
@@ -136,6 +142,7 @@ async function handleScreenshot(
       windowTitle: parsed.mode === "window" ? parsed.window_title : undefined,
       maxDimension: parsed.max_dimension,
       format: parsed.format,
+      ruler: parsed.ruler,
     });
 
     const mimeType = parsed.format === "jpeg" ? "image/jpeg" : "image/png";

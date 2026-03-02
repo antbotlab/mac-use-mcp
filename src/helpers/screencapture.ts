@@ -33,6 +33,8 @@ export interface CaptureOptions {
   maxDimension?: number;
   /** Output image format. Defaults to "png". */
   format?: ImageFormat;
+  /** Overlay coordinate rulers on screenshot edges. Defaults to false. */
+  ruler?: boolean;
 }
 
 /** Result of a screen capture operation. */
@@ -81,9 +83,10 @@ export async function captureScreen(
     windowTitle,
     maxDimension = DEFAULT_MAX_DIMENSION,
     format = "png",
+    ruler = false,
   } = options;
 
-  return captureViaInputHelper(mode, region, windowTitle, maxDimension, format);
+  return captureViaInputHelper(mode, region, windowTitle, maxDimension, format, ruler);
 }
 
 /**
@@ -98,6 +101,7 @@ async function captureViaInputHelper(
   windowTitle: string | undefined,
   maxDimension: number,
   format: ImageFormat,
+  ruler: boolean,
 ): Promise<ScreenshotResult> {
   const tmpPath = makeTmpPath(format);
 
@@ -117,6 +121,10 @@ async function captureViaInputHelper(
 
   if (mode === "window" && windowTitle) {
     helperArgs.window_title = windowTitle;
+  }
+
+  if (ruler) {
+    helperArgs.ruler = true;
   }
 
   try {
