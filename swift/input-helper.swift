@@ -1,6 +1,7 @@
 import Carbon
 import Cocoa
 import CoreGraphics
+import CoreText
 import Foundation
 import ImageIO
 
@@ -681,6 +682,168 @@ func encodeImage(_ image: CGImage, format: String) -> Data {
     return imageData as Data
 }
 
+// MARK: - Ruler Overlay
+
+/// Width of the ruler bar in pixels.
+private let rulerBarSize = 20
+
+/// Draw coordinate rulers on the top and left edges of a screenshot.
+///
+/// Rulers display screen coordinates at adaptive tick intervals so that
+/// an LLM can read exact positions instead of visually estimating them.
+///
+/// - Parameters:
+///   - image: The screenshot image to overlay rulers on.
+///   - originX: Screen x-coordinate corresponding to image pixel (0, 0).
+///   - originY: Screen y-coordinate corresponding to image pixel (0, 0).
+///   - scaleX: Multiply factor from image pixels to screen x-offset.
+///   - scaleY: Multiply factor from image pixels to screen y-offset.
+/// - Returns: A new CGImage with ruler overlays, or the original on failure.
+func drawRuler(
+    _ image: CGImage,
+    _ originX: CGFloat,
+    _ originY: CGFloat,
+    _ scaleX: CGFloat,
+    _ scaleY: CGFloat
+) -> CGImage {
+    let w = image.width
+    let h = image.height
+    let bar = rulerBarSize
+
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue
+        | CGBitmapInfo.byteOrder32Little.rawValue
+
+    guard let ctx = CGContext(
+        data: nil,
+        width: w,
+        height: h,
+        bitsPerComponent: 8,
+        bytesPerRow: 0,
+        space: colorSpace,
+        bitmapInfo: bitmapInfo
+    ) else {
+        return image
+    }
+
+    // Draw original image (CGContext origin is bottom-left)
+    ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+
+    // --- Adaptive tick spacing ---
+    let maxDim = max(w, h)
+    let majorSpacing: Int
+    let minorSpacing: Int
+    if maxDim < 500 {
+        majorSpacing = 50; minorSpacing = 10
+    } else if maxDim <= 1500 {
+        majorSpacing = 100; minorSpacing = 50
+    } else {
+        majorSpacing = 200; minorSpacing = 100
+    }
+
+    // --- Semi-transparent bars ---
+    let barColor = CGColor(red: 0, green: 0, blue: 0, alpha: 0.7)
+    ctx.setFillColor(barColor)
+    // Left bar: full height
+    ctx.fill(CGRect(x: 0, y: 0, width: bar, height: h))
+    // Top bar: starts after the left bar to avoid double-alpha in the corner
+    // In context coords, "visual top" = y from (h - bar) to h
+    ctx.fill(CGRect(x: bar, y: h - bar, width: w - bar, height: bar))
+
+    // --- Drawing setup ---
+    let white = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
+    ctx.setStrokeColor(white)
+    ctx.setLineWidth(1)
+
+    let font = CTFontCreateWithName("Menlo" as CFString, 9, nil)
+    let labelAttrs: [NSAttributedString.Key: Any] = [
+        .font: font,
+        .foregroundColor: white,
+    ]
+
+    // Helper: floor-division that works correctly with negative dividends.
+    func floorDiv(_ a: Int, _ b: Int) -> Int {
+        let q = a / b
+        return (a < 0 && a % b != 0) ? q - 1 : q
+    }
+
+    // --- Top ruler (horizontal) ---
+    // Screen x range covered by the image
+    let screenXMin = Int(floor(originX))
+    let screenXMax = Int(ceil(originX + CGFloat(w) * scaleX))
+    // First tick at the smallest multiple of minorSpacing >= screenXMin
+    var sx = (floorDiv(screenXMin, minorSpacing) + 1) * minorSpacing
+
+    while sx <= screenXMax {
+        // Convert screen coordinate to image-pixel x
+        let imgX = CGFloat(sx) - originX
+        let px = imgX / scaleX  // pixel position in output image
+
+        // Only draw within the top-bar region (skip left-bar overlap)
+        if px >= CGFloat(bar) && px < CGFloat(w) {
+            let isMajor = sx % majorSpacing == 0
+            let tickLen = isMajor ? 10 : 5
+
+            // In context coords: top edge = h, inner bar edge = h - bar
+            // Ticks grow from inner edge inward (toward h)
+            let cy = CGFloat(h - bar)
+            ctx.move(to: CGPoint(x: px, y: cy))
+            ctx.addLine(to: CGPoint(x: px, y: cy + CGFloat(tickLen)))
+            ctx.strokePath()
+
+            if isMajor {
+                let label = "\(sx)"
+                let attrStr = NSAttributedString(string: label, attributes: labelAttrs)
+                let line = CTLineCreateWithAttributedString(attrStr)
+                ctx.textPosition = CGPoint(x: px + 2, y: cy + CGFloat(tickLen) + 1)
+                CTLineDraw(line, ctx)
+            }
+        }
+        sx += minorSpacing
+    }
+
+    // --- Left ruler (vertical) ---
+    // Screen y range covered by the image
+    let screenYMin = Int(floor(originY))
+    let screenYMax = Int(ceil(originY + CGFloat(h) * scaleY))
+    var sy = (floorDiv(screenYMin, minorSpacing) + 1) * minorSpacing
+
+    while sy <= screenYMax {
+        // Convert screen coordinate to image-pixel y (top-down)
+        let imgY = CGFloat(sy) - originY
+        let py = imgY / scaleY
+        // Context y: flip from top-down to bottom-up
+        let cy = CGFloat(h) - py
+
+        // Skip the top-bar overlap region
+        if cy >= 0 && cy <= CGFloat(h - bar) {
+            let isMajor = sy % majorSpacing == 0
+            let tickLen = isMajor ? 10 : 5
+
+            // Ticks grow from inner edge (x = bar) toward outer edge (x = 0)
+            ctx.move(to: CGPoint(x: CGFloat(bar), y: cy))
+            ctx.addLine(to: CGPoint(x: CGFloat(bar - tickLen), y: cy))
+            ctx.strokePath()
+
+            if isMajor {
+                let label = "\(sy)"
+                let attrStr = NSAttributedString(string: label, attributes: labelAttrs)
+                let line = CTLineCreateWithAttributedString(attrStr)
+                // Rotate 90° CCW so text reads bottom-to-top along the left edge
+                ctx.saveGState()
+                ctx.translateBy(x: CGFloat(bar - tickLen - 2), y: cy - 2)
+                ctx.rotate(by: .pi / 2)
+                ctx.textPosition = .zero
+                CTLineDraw(line, ctx)
+                ctx.restoreGState()
+            }
+        }
+        sy += minorSpacing
+    }
+
+    return ctx.makeImage() ?? image
+}
+
 // MARK: - Screenshot Command Handler
 
 /// Handle the "screenshot" command.
@@ -834,11 +997,8 @@ func handleScreenshot(_ args: [String: Any]) {
         outputImage = resizeImage(logicalImage, newWidth: newWidth, newHeight: newHeight)
     }
 
-    let outputWidth = outputImage.width
-    let outputHeight = outputImage.height
-
-    // Encode to PNG or JPEG
-    let encoded = encodeImage(outputImage, format: format)
+    var outputWidth = outputImage.width
+    var outputHeight = outputImage.height
 
     // Compute scale factors for coordinate mapping.
     // scale converts image pixels to logical screen offsets:
@@ -849,6 +1009,21 @@ func handleScreenshot(_ args: [String: Any]) {
         scaleX = Double(logicalWidth) / Double(outputWidth)
         scaleY = Double(logicalHeight) / Double(outputHeight)
     }
+
+    // Draw ruler overlay if requested
+    let ruler = args["ruler"] as? Bool ?? false
+    if ruler {
+        outputImage = drawRuler(
+            outputImage,
+            originX, originY,
+            CGFloat(scaleX), CGFloat(scaleY)
+        )
+        outputWidth = outputImage.width
+        outputHeight = outputImage.height
+    }
+
+    // Encode to PNG or JPEG
+    let encoded = encodeImage(outputImage, format: format)
 
     var result: [String: Any] = [
         "success": true,
