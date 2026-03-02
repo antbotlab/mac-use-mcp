@@ -26,5 +26,8 @@ npm-debug.log*
 swift/*.o
 swift/*.d
 
+# MCP Registry auth tokens
+.mcpregistry_*
+
 # Claude Code
 .claude/

@@ -1,6 +1,6 @@
 {
   "name": "mac-use-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Zero-native-dependency macOS desktop automation via MCP",
   "license": "MIT",
   "author": "antbotlab",
@@ -64,5 +64,6 @@
   "bugs": {
     "url": "https://github.com/antbotlab/mac-use-mcp/issues"
   },
-  "homepage": "https://github.com/antbotlab/mac-use-mcp#readme"
+  "homepage": "https://github.com/antbotlab/mac-use-mcp#readme",
+  "mcpName": "io.github.antbotlab/mac-use-mcp"
 }
