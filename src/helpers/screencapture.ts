@@ -86,7 +86,14 @@ export async function captureScreen(
     ruler = false,
   } = options;
 
-  return captureViaInputHelper(mode, region, windowTitle, maxDimension, format, ruler);
+  return captureViaInputHelper(
+    mode,
+    region,
+    windowTitle,
+    maxDimension,
+    format,
+    ruler,
+  );
 }
 
 /**
