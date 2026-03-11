@@ -2,7 +2,7 @@
 
 # mac-use-mcp
 
-![demo](assets/demo.gif)
+![demo](https://raw.githubusercontent.com/antbotlab/mac-use-mcp/main/assets/demo.gif)
 
 > [!WARNING]
 > **This tool has full control over mouse, keyboard, and screen.** Please use in a sandboxed environment to protect your privacy and avoid accidental data loss by your agents. You are responsible for any actions performed through this tool.
@@ -277,6 +277,7 @@ This Node.js MCP server exposes 18 tools for mouse, keyboard, and screen control
 | --- | --- |
 | `screenshot` | Capture the screen, a region, or a window by title (PNG or JPEG) |
 | `get_screen_info` | Get display count, resolution, origin, and scale factor for each display |
+| `get_cursor_position` | Get current cursor coordinates |
 
 ### Input
 
@@ -317,9 +318,8 @@ App names support fuzzy matching — `"chrome"` resolves to `"Google Chrome"`, `
 
 | Tool | Description |
 | --- | --- |
-| `wait` | Pause for a specified duration (in milliseconds, 0–10 000) |
+| `wait` | Pause for a specified duration (in milliseconds, 0–10 000, default 500) |
 | `check_permissions` | Verify Accessibility and Screen Recording access |
-| `get_cursor_position` | Get current cursor coordinates |
 
 ## Examples
 

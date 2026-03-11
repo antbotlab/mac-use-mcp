@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.antbotlab/mac-use-mcp",
-  "description": "Zero-dependency macOS desktop automation for AI agents. 18 tools via MCP. macOS 13+.",
+  "description": "Zero-native-dependency macOS desktop automation for AI agents. 18 tools via MCP. macOS 13+.",
   "repository": {
     "url": "https://github.com/antbotlab/mac-use-mcp",
     "source": "github"

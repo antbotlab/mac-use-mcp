@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Docs
 - Add safety warning for sandbox usage and data protection
 - Add model recommendations and MCP client configurations
-- Add banner and replace demo GIF with MP4
+- Add banner and demo GIF
 
 ## [1.0.1] - 2026-03-02
 
@@ -130,7 +130,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI workflow for macOS
 - Open-source community files (contributing guide, code of conduct, security policy)
 
-[Unreleased]: https://github.com/antbotlab/mac-use-mcp/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/antbotlab/mac-use-mcp/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/antbotlab/mac-use-mcp/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/antbotlab/mac-use-mcp/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/antbotlab/mac-use-mcp/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/antbotlab/mac-use-mcp/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/antbotlab/mac-use-mcp/compare/v0.1.0...v0.2.0
