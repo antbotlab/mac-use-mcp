@@ -1,4 +1,4 @@
-import { access } from "node:fs/promises";
+import { access, chmod } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { ERROR_MESSAGES, INPUT_HELPER_TIMEOUT_MS } from "../constants.js";
 import { execFileAsync } from "./exec.js";
@@ -6,6 +6,43 @@ import { execFileAsync } from "./exec.js";
 /** Path to the compiled Swift input-helper binary. */
 const BINARY_PATH = new URL("../../dist/bin/input-helper", import.meta.url)
   .pathname;
+
+/**
+ * Verify the Swift helper is present and executable, recovering when possible.
+ *
+ * npm pack normalizes file modes from the registry index, so prebuilt binaries
+ * shipped under `files[]` can lose their +x bit on publish even though the
+ * source tarball had it. This function distinguishes "missing" from "present
+ * but not executable" and attempts a single `chmod 0o755` self-heal for the
+ * latter case before falling back to a structured error.
+ */
+async function ensureBinaryExecutable(): Promise<void> {
+  try {
+    await access(BINARY_PATH, fsConstants.X_OK);
+    return;
+  } catch {
+    // X_OK failed — distinguish "file missing" from "file not executable".
+    try {
+      await access(BINARY_PATH, fsConstants.F_OK);
+    } catch (fError) {
+      throw new Error(
+        `${ERROR_MESSAGES.BINARY_NOT_FOUND}\n  path: ${BINARY_PATH}`,
+        { cause: fError },
+      );
+    }
+
+    // File exists, just not executable — attempt self-heal.
+    try {
+      await chmod(BINARY_PATH, 0o755);
+      await access(BINARY_PATH, fsConstants.X_OK);
+    } catch (healError) {
+      throw new Error(
+        `${ERROR_MESSAGES.BINARY_NOT_EXECUTABLE}\n  path: ${BINARY_PATH}`,
+        { cause: healError },
+      );
+    }
+  }
+}
 
 /** Commands accepted by the Swift input-helper binary. */
 export type InputCommand =
@@ -38,12 +75,7 @@ export async function runInputHelper(
   command: InputCommand,
   args: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  // Verify the binary exists before attempting execution
-  try {
-    await access(BINARY_PATH, fsConstants.X_OK);
-  } catch (error) {
-    throw new Error(ERROR_MESSAGES.BINARY_NOT_FOUND, { cause: error });
-  }
+  await ensureBinaryExecutable();
 
   try {
     const { stdout } = await execFileAsync(

@@ -117,9 +117,15 @@ export const PERMISSION_CHECK_TIMEOUT_MS = 5_000;
 
 /**
  * Standardized error messages used across the MCP server.
+ *
+ * Error messages that surface a filesystem path append it at the throw site
+ * so the user sees exactly which binary to act on (the install location
+ * varies across npx cache, global pnpm prefix, local clone, etc.).
  */
 export const ERROR_MESSAGES = {
   TIMEOUT: "Operation timed out",
   BINARY_NOT_FOUND:
-    "Required helper binary not found — run `pnpm run build:swift` to compile native helpers",
+    "Required helper binary not found. Reinstall the package to restore `dist/bin/input-helper` (for npx, clear the cache and re-run; for a local checkout, run `pnpm run build:swift`).",
+  BINARY_NOT_EXECUTABLE:
+    "Required helper binary exists but is not executable and automatic chmod failed. Run `chmod +x` on the path above and retry.",
 } as const;

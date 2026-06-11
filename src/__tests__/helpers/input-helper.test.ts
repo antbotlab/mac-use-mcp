@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { constants as fsConstants } from "node:fs";
 import { ERROR_MESSAGES } from "../../constants.js";
 
 // Mock dependencies
@@ -8,14 +9,16 @@ vi.mock("../../helpers/exec.js", () => ({
 
 vi.mock("node:fs/promises", () => ({
   access: vi.fn(),
+  chmod: vi.fn(),
 }));
 
 import { execFileAsync } from "../../helpers/exec.js";
-import { access } from "node:fs/promises";
+import { access, chmod } from "node:fs/promises";
 import { runInputHelper } from "../../helpers/input-helper.js";
 
 const mockExecFileAsync = vi.mocked(execFileAsync);
 const mockAccess = vi.mocked(access);
+const mockChmod = vi.mocked(chmod);
 
 /** Create an exec-style error with stdout, stderr, code, killed, signal fields. */
 function makeExecError(
@@ -39,11 +42,58 @@ describe("runInputHelper", () => {
   });
 
   it("throws BINARY_NOT_FOUND when binary is missing", async () => {
+    // Both X_OK and F_OK fail → file truly missing.
     mockAccess.mockRejectedValue(new Error("ENOENT"));
 
     await expect(runInputHelper("click", { x: 0, y: 0 })).rejects.toThrow(
       ERROR_MESSAGES.BINARY_NOT_FOUND,
     );
+  });
+
+  it("self-heals via chmod when binary exists but lacks +x", async () => {
+    // X_OK fails the first time, F_OK succeeds (file present), chmod resolves,
+    // then the post-chmod X_OK check succeeds — execution proceeds.
+    let xOkCalls = 0;
+    mockAccess.mockImplementation(
+      (_path: unknown, mode?: unknown): Promise<void> => {
+        if (mode === fsConstants.X_OK) {
+          xOkCalls += 1;
+          return xOkCalls === 1
+            ? Promise.reject(new Error("EACCES"))
+            : Promise.resolve();
+        }
+        return Promise.resolve(); // F_OK: file present
+      },
+    );
+    mockChmod.mockResolvedValue(undefined);
+    mockExecFileAsync.mockResolvedValue({
+      stdout: '{"success": true}',
+      stderr: "",
+    });
+
+    await runInputHelper("cursor", {});
+
+    expect(mockChmod).toHaveBeenCalledWith(
+      expect.stringContaining("input-helper"),
+      0o755,
+    );
+    expect(mockExecFileAsync).toHaveBeenCalled();
+  });
+
+  it("throws BINARY_NOT_EXECUTABLE when binary exists but chmod fails", async () => {
+    // X_OK fails, F_OK succeeds, chmod rejects → no self-heal possible.
+    mockAccess.mockImplementation(
+      (_path: unknown, mode?: unknown): Promise<void> =>
+        mode === fsConstants.X_OK
+          ? Promise.reject(new Error("EACCES"))
+          : Promise.resolve(),
+    );
+    mockChmod.mockRejectedValue(new Error("EPERM"));
+
+    await expect(runInputHelper("click", {})).rejects.toThrow(
+      ERROR_MESSAGES.BINARY_NOT_EXECUTABLE,
+    );
+    expect(mockExecFileAsync).not.toHaveBeenCalled();
   });
 
   it("returns parsed JSON on success", async () => {
