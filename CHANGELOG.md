@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Self-heal `dist/bin/input-helper` when the published tarball ships it without the executable bit: the runtime now distinguishes "missing" from "not executable", attempts a `chmod 0o755`, and only falls back to a structured error if recovery fails. Rewords the error to surface the actual cause and the binary path instead of pointing users at `pnpm run build:swift` (#32).
+
 ## [1.1.1] - 2026-03-02
 
 ### Added
