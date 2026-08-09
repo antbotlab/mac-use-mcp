@@ -18,6 +18,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "build:swift": "bash scripts/build-swift.sh",
+    "postinstall": "chmod +x dist/bin/input-helper 2>/dev/null || true",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",

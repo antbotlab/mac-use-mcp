@@ -121,5 +121,7 @@ export const PERMISSION_CHECK_TIMEOUT_MS = 5_000;
 export const ERROR_MESSAGES = {
   TIMEOUT: "Operation timed out",
   BINARY_NOT_FOUND:
-    "Required helper binary not found — run `pnpm run build:swift` to compile native helpers",
+    "Helper binary not found or not executable. " +
+    "Run: chmod +x dist/bin/input-helper\n" +
+    "(this likely indicates a packaging issue; please report at https://github.com/antbotlab/mac-use-mcp/issues)",
 } as const;
